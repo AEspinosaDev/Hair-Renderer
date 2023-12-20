@@ -1,0 +1,37 @@
+[
+{
+  "directory": "/home/tony/Dev/OpenGL-Hair/build",
+  "command": "/usr/bin/g++ -I/home/tony/Dev/OpenGL-Hair/deps -g -o CMakeFiles/HairViewer.dir/src/engine/core.cpp.o -c /home/tony/Dev/OpenGL-Hair/src/engine/core.cpp",
+  "file": "/home/tony/Dev/OpenGL-Hair/src/engine/core.cpp"
+},
+{
+  "directory": "/home/tony/Dev/OpenGL-Hair/build",
+  "command": "/usr/bin/g++ -I/home/tony/Dev/OpenGL-Hair/deps -g -o CMakeFiles/HairViewer.dir/src/engine/loaders.cpp.o -c /home/tony/Dev/OpenGL-Hair/src/engine/loaders.cpp",
+  "file": "/home/tony/Dev/OpenGL-Hair/src/engine/loaders.cpp"
+},
+{
+  "directory": "/home/tony/Dev/OpenGL-Hair/build",
+  "command": "/usr/bin/g++ -I/home/tony/Dev/OpenGL-Hair/deps -g -o CMakeFiles/HairViewer.dir/src/engine/mesh.cpp.o -c /home/tony/Dev/OpenGL-Hair/src/engine/mesh.cpp",
+  "file": "/home/tony/Dev/OpenGL-Hair/src/engine/mesh.cpp"
+},
+{
+  "directory": "/home/tony/Dev/OpenGL-Hair/build",
+  "command": "/usr/bin/g++ -I/home/tony/Dev/OpenGL-Hair/deps -g -o CMakeFiles/HairViewer.dir/src/engine/renderer.cpp.o -c /home/tony/Dev/OpenGL-Hair/src/engine/renderer.cpp",
+  "file": "/home/tony/Dev/OpenGL-Hair/src/engine/renderer.cpp"
+},
+{
+  "directory": "/home/tony/Dev/OpenGL-Hair/build",
+  "command": "/usr/bin/g++ -I/home/tony/Dev/OpenGL-Hair/deps -g -o CMakeFiles/HairViewer.dir/src/engine/shader.cpp.o -c /home/tony/Dev/OpenGL-Hair/src/engine/shader.cpp",
+  "file": "/home/tony/Dev/OpenGL-Hair/src/engine/shader.cpp"
+},
+{
+  "directory": "/home/tony/Dev/OpenGL-Hair/build",
+  "command": "/usr/bin/g++ -I/home/tony/Dev/OpenGL-Hair/deps -g -o CMakeFiles/HairViewer.dir/src/engine/utils.cpp.o -c /home/tony/Dev/OpenGL-Hair/src/engine/utils.cpp",
+  "file": "/home/tony/Dev/OpenGL-Hair/src/engine/utils.cpp"
+},
+{
+  "directory": "/home/tony/Dev/OpenGL-Hair/build",
+  "command": "/usr/bin/g++ -I/home/tony/Dev/OpenGL-Hair/deps -g -o CMakeFiles/HairViewer.dir/src/main.cpp.o -c /home/tony/Dev/OpenGL-Hair/src/main.cpp",
+  "file": "/home/tony/Dev/OpenGL-Hair/src/main.cpp"
+}
+]

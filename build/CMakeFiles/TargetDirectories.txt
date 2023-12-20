@@ -1,0 +1,3 @@
+/home/tony/Dev/OpenGL-Hair/build/CMakeFiles/HairViewer.dir
+/home/tony/Dev/OpenGL-Hair/build/CMakeFiles/edit_cache.dir
+/home/tony/Dev/OpenGL-Hair/build/CMakeFiles/rebuild_cache.dir
