@@ -3,6 +3,7 @@
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
+#include "object3D.h"
 #include "utils.h"
 
 struct Vertex
@@ -45,18 +46,17 @@ struct Geometry
     std::vector<unsigned int> indices;
 };
 
-class Mesh
+class Mesh : public Object3D
 {
     unsigned int m_vao;
     Geometry m_geometry;
     bool m_indexed;
-    glm::mat4 m_model{1.0f};
+
+    static int INSTANCED_MESHES;
 
 public:
-    Mesh(){}
+    Mesh() : Object3D("Mesh", {0.0f, 0.0f, 0.0f}, Object3DType::MESH) { Mesh::INSTANCED_MESHES++; }
 
-    inline void set_model_matrix(glm::mat4 mat) { m_model = mat; }
-    inline glm::mat4 get_model_matrix() const { return m_model; }
     inline unsigned int get_buffer_id() const { return m_vao; }
     inline bool is_indexed() const { return m_indexed; }
 
@@ -65,6 +65,8 @@ public:
     void generate_buffers();
 
     void draw(GLenum drawingPrimitive = GL_TRIANGLES) const;
+
+    inline static int get_number_of_instances(){ return INSTANCED_MESHES;}
 };
 
 #endif

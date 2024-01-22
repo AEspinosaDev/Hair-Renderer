@@ -1,5 +1,7 @@
 #include "mesh.h"
 
+int Mesh::INSTANCED_MESHES = 0;
+
 void Mesh::set_geometry(Geometry &g)
 {
     m_geometry = g;
