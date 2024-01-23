@@ -1,5 +1,12 @@
 #include "core.h"
 
+void GLFW_check_error()
+{
+    const char *description;
+    int code = glfwGetError(&description);
+    std::cout << description << std::endl;
+}
+
 void GLclearError()
 {
     while (glGetError() != GL_NO_ERROR)

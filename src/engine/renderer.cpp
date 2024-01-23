@@ -11,7 +11,10 @@ void Renderer::run()
 void Renderer::create_context()
 {
     if (!glfwInit())
+    {
+        GLFW_CHECK();
         exit(EXIT_FAILURE);
+    }
 
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, m_context.OpenGLMajor);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, m_context.OpenGLMinor);
@@ -21,12 +24,10 @@ void Renderer::create_context()
     if (!m_window.ptr)
     {
         glfwTerminate();
+        GLFW_CHECK();
         exit(EXIT_FAILURE);
     }
-
-    // glfwSetKeyCallback(window, key_callback);
-    // glfwSetCursorPosCallback(window, mouse_callback);
-
+   
     glfwMakeContextCurrent(m_window.ptr);
     if (glewInit() != GLEW_OK)
     {
@@ -38,12 +39,21 @@ void Renderer::create_context()
 
 void Renderer::init()
 {
+    
+    if (!m_initQueue.functions.empty())
+        m_initQueue.flush();
+
 }
 
 void Renderer::tick()
 {
     while (!glfwWindowShouldClose(m_window.ptr))
     {
+        double currentTime = glfwGetTime();
+        m_time.delta = currentTime - m_time.last;
+        m_time.last = currentTime;
+        m_time.framesPerSecond = int(1.0 / m_time.delta);
+
         update();
 
         draw();
@@ -64,6 +74,9 @@ void Renderer::draw()
 
 void Renderer::cleanup()
 {
+    if (!m_cleanupQueue.functions.empty())
+        m_cleanupQueue.flush();
+
     glfwDestroyWindow(m_window.ptr);
     glfwTerminate();
 }

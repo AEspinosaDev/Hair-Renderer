@@ -2,6 +2,7 @@
 #define __RENDERER__
 
 #include "core.h"
+#include "utils.h"
 
 struct Extent2D
 {
@@ -28,16 +29,34 @@ protected:
     const ContextSettings m_context{};
     Window m_window{};
 
-    // m_initQueue;
-    // m_cleanupQueue;
+    struct Time
+    {
+        double delta{0.0};
+        double last{0.0};
+        double current{0.0};
+        int framesPerSecond{0};
+    };
+    Time m_time{};
 
+    utils::EventDispatcher m_initQueue;
+    utils::EventDispatcher m_cleanupQueue;
 
+    void create_context();
+    void tick();
+    void cleanup();
+    /*
+    Override function in order to initiate desired funcitonality. Call parent function if want to use events functionality.
+    */
     virtual void init();
-    virtual void create_context();
-    virtual void tick();
+     /*
+    Override function in order to customize update.
+    */
     virtual void update();
+     /*
+    Override function in order to customize render funcitonality.
+    */
     virtual void draw();
-    virtual void cleanup();
+
 
 public:
     Renderer(const char *title) { m_window.title = title; }

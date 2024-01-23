@@ -9,25 +9,29 @@
 
 #ifdef _WIN32
 #define ASSERT(x) \
-    if (!(x))     \
-        __debugbreak();
+	if (!(x))     \
+		__debugbreak();
 #else
 #define ASSERT(x) \
-    if (!(x))     \
-        __builtin_trap();
+	if (!(x))     \
+		__builtin_trap();
 #endif
 
-#define GL_CHECK(x) GLclearError();\
- x;\
-ASSERT(GLlogCall(#x, __FILE__, __LINE__))
+#define GL_CHECK(x) \
+	GLclearError(); \
+	x;              \
+	ASSERT(GLlogCall(#x, __FILE__, __LINE__))
 #define DEBUG_LOG(msg)                 \
 	{                                  \
 		std::cout << msg << std::endl; \
 	}
-#define ERR_LOG(msg)                 \
+#define ERR_LOG(msg)                   \
 	{                                  \
 		std::cerr << msg << std::endl; \
 	}
+#define GLFW_CHECK() GLFW_check_error();
+
+void GLFW_check_error();
 void GLclearError();
 bool GLlogCall(const char *function, const char *file, int line);
 
