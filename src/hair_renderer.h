@@ -31,17 +31,16 @@ private:
             glfwWindowShouldClose(m_window.ptr);
         }
 
-        if (glfwGetKey(w, GLFW_KEY_F11) == GLFW_PRESS)
-        {
-            // w->set_fullscreen(w->is_fullscreen() ? false : true);
-        }
     }
     void mouse_callback(GLFWwindow *w, double x, double y)
     {
+        // std::cout << m_camera->get_position().b << std::endl;
         m_controller->handle_mouse(w, x, y);
     }
     void resize_callback(GLFWwindow *w, int width, int height)
     {
+        m_camera->set_projection(width,height);
+        resize(0,0,width,height);
     }
 
 #pragma endregion

@@ -4,9 +4,6 @@
 
 int main(int, char **)
 {
-
-    
-
     HairRenderer renderer("Hair Viewer");
     try
     {

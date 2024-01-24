@@ -45,7 +45,7 @@ void Mesh::generate_buffers()
         GL_CHECK(glGenBuffers(1, &ibo));
         GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
         GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_geometry.indices.size() * sizeof(m_geometry.indices[0]), m_geometry.indices.data(), GL_STATIC_DRAW));
-        
+
         m_indexed = true;
     }
     else
@@ -66,6 +66,7 @@ void Mesh::draw(GLenum drawingPrimitive) const
     }
     else
     {
+        
         GL_CHECK(glDrawArrays(drawingPrimitive, 0, m_geometry.vertices.size()));
     }
 }

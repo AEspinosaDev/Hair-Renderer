@@ -27,7 +27,7 @@ void Renderer::create_context()
         GLFW_CHECK();
         exit(EXIT_FAILURE);
     }
-   
+
     glfwMakeContextCurrent(m_window.ptr);
     if (glewInit() != GLEW_OK)
     {
@@ -39,10 +39,13 @@ void Renderer::create_context()
 
 void Renderer::init()
 {
-    
+
     if (!m_initQueue.functions.empty())
         m_initQueue.flush();
 
+    enableDepthTest(m_settings.depthTest);
+    enableDepthWrites(m_settings.depthWrites);
+    
 }
 
 void Renderer::tick()
