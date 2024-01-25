@@ -24,6 +24,9 @@ struct ContextSettings
 };
 struct RendererSettings
 {
+    bool vSync{true};
+    int framerateCap{-1};
+    bool userInterface{true};
     bool depthTest{true};
     bool depthWrites{true};
     bool blending{true};
@@ -42,12 +45,10 @@ protected:
         double delta{0.0};
         double last{0.0};
         double current{0.0};
-        int framesPerSecond{0};
-        int frameCap{-1};
+        int framerate{0};
     };
     Time m_time{};
 
-    utils::EventDispatcher m_initQueue;
     utils::EventDispatcher m_cleanupQueue;
 
     void create_context();
@@ -65,14 +66,34 @@ protected:
    Override function in order to customize render funcitonality.
    */
     virtual void draw();
+    /*
+    Setup GLFW window callbacks here
+     */
+    virtual void setup_window_callbacks();
 
 public:
     Renderer(const char *title) { m_window.title = title; }
     Renderer(Window &window) { m_window = window; }
-    Renderer(Window &window, ContextSettings &contextSettings) : m_window(window), m_context(contextSettings) {}
+    Renderer(Window &window, ContextSettings &contextSettings, RendererSettings &settings) : m_window(window), m_context(contextSettings), m_settings(settings) {}
 
     void run();
 
+#pragma region getters&setters
+    inline RendererSettings get_settings() const
+    {
+        return m_settings;
+    }
+    inline void set_settings(RendererSettings &s)
+    {
+        m_settings = s;
+    }
+    inline Time get_time() const
+    {
+        return m_time;
+    }
+#pragma endregion
+
+#pragma region opengl_state_wrappers
     /*
     Use as callback
     */
@@ -81,7 +102,6 @@ public:
         GL_CHECK(glViewport(0, 0, w, h));
         m_window.extent = {w, h};
     }
-
     inline virtual void clearColorBit()
     {
         GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
@@ -104,6 +124,28 @@ public:
         GL_CHECK(glDepthMask(op));
         m_settings.depthWrites = op;
     }
+#pragma endregion
+#pragma region user_interface
+    inline bool user_interface_wants_to_handle_input()
+    {
+        ImGuiIO &io = ImGui::GetIO();
+        if (io.WantCaptureMouse || io.WantCaptureKeyboard)
+            return true;
+        else
+            return false;
+    }
+    /*
+    Override if custom init functionality needed. Predetermined graphic user interface backend is IMGUI.
+    */
+    virtual void init_user_interface();
+    /*
+    Override to add IMGUI windows and widgets.Call ImGui::NewFrame at start and ImGui::Render at the end. Don't forget to call parent function for IMGUI frame set up
+    */
+    virtual void setup_user_interface_frame();
+
+    virtual void upload_user_interface_render_data();
+
+#pragma endregion
 };
 
 #endif

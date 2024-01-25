@@ -38,7 +38,7 @@ protected:
     const LightType m_lighType;
 
 public:
-    Light(const char *name, LightType type, glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f), float intensity = 1.0f) : Object3D(name, glm::vec3{0.0f}, type), m_color(color),
+    Light(const char *name, LightType type, glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f), float intensity = 1.0f) : Object3D(name, glm::vec3{0.0f}, LIGHT), m_color(color),
                                                                                                                      m_intensity(intensity), m_lighType(type) {}
     virtual void cache_uniforms(Shader *shader) const = 0;
 

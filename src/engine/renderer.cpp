@@ -34,32 +34,41 @@ void Renderer::create_context()
         fprintf(stderr, "Failed to initialize GLEW\n");
     }
 
-    glfwSwapInterval(1);
+    glfwSwapInterval(m_settings.vSync);
 }
 
 void Renderer::init()
 {
-
-    if (!m_initQueue.functions.empty())
-        m_initQueue.flush();
+    setup_window_callbacks();
 
     enableDepthTest(m_settings.depthTest);
     enableDepthWrites(m_settings.depthWrites);
-    
+
+    if (m_settings.userInterface)
+    {
+        init_user_interface();
+    }
 }
 
 void Renderer::tick()
 {
     while (!glfwWindowShouldClose(m_window.ptr))
     {
+      
         double currentTime = glfwGetTime();
         m_time.delta = currentTime - m_time.last;
         m_time.last = currentTime;
-        m_time.framesPerSecond = int(1.0 / m_time.delta);
+        m_time.framerate = int(1.0 / m_time.delta);
 
         update();
 
+        if (m_settings.userInterface)
+            setup_user_interface_frame();
+
         draw();
+
+        if (m_settings.userInterface)
+            upload_user_interface_render_data();
 
         glfwSwapBuffers(m_window.ptr);
 
@@ -73,6 +82,41 @@ void Renderer::update()
 
 void Renderer::draw()
 {
+}
+
+void Renderer::setup_window_callbacks()
+{
+}
+
+void Renderer::init_user_interface()
+{
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO &io = ImGui::GetIO();
+    (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
+
+    ImGui::StyleColorsClassic();
+
+    ImGui_ImplGlfw_InitForOpenGL(m_window.ptr, true);
+
+    ImGui_ImplOpenGL3_Init("#version 460");
+
+    m_cleanupQueue.push_function([=]
+                                 { ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext(); });
+}
+
+void Renderer::setup_user_interface_frame()
+{
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+}
+
+void Renderer::upload_user_interface_render_data()
+{
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }
 
 void Renderer::cleanup()

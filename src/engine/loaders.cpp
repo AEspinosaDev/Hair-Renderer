@@ -355,7 +355,7 @@ bool loaders::load_PLY(Mesh *const mesh, bool overrideGeometry, const char *file
 
 bool loaders::load_NeuralHair(Mesh *const mesh, bool overrideGeometry, const char *fileName, bool preload, bool verbose, bool calculateTangents)
 {
-     std::unique_ptr<std::istream> file_stream;
+    std::unique_ptr<std::istream> file_stream;
     std::vector<uint8_t> byte_buffer;
     std::string filePath = fileName;
     try
@@ -512,16 +512,22 @@ bool loaders::load_NeuralHair(Mesh *const mesh, bool overrideGeometry, const cha
         if (positions)
         {
             const float *posData = reinterpret_cast<const float *>(positions->buffer.get());
+            const unsigned char *colorData = reinterpret_cast<const unsigned char *>(colors->buffer.get());
             for (size_t i = 0; i < positions->count; ++i)
             {
                 float x = posData[i * 3];
                 float y = posData[i * 3 + 1];
                 float z = posData[i * 3 + 2];
+                float r = (float)colorData[i * 4];
+                float g = (float)colorData[i * 4 + 1];
+                float b = (float)colorData[i * 4 + 2];
+                float a = (float)colorData[i * 4 + 3];
 
                 // Assuming Vertex has a constructor that takes position attributes
-                vertices.push_back({{x, y, z}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}}); // You can set color and other attributes as needed
+                vertices.push_back({{x, y, z}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {r/255, g/255, b/255}}); // You can set color and other attributes as needed
             }
         }
+
         // const int *facesData = reinterpret_cast<const int *>(faces->buffer.get());
         // for (size_t i = 0; i < faces->count; i += 3)
         // {

@@ -12,14 +12,14 @@ file(GLOB SOURCES
 "src/*.h"
 "src/engine/*.cpp"
 "src/engine/*.h"
+"deps/imgui/*.cpp"
+"deps/imgui/*.h"
 )
-
 
 add_executable(HairViewer ${SOURCES})
 
 target_link_libraries(HairViewer libglfw3.a GLEW::GLEW ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} -lGL)
-target_include_directories(HairViewer PUBLIC ${CMAKE_SOURCE_DIR}/deps)
-
+target_include_directories(HairViewer PUBLIC ${CMAKE_SOURCE_DIR}/deps ${CMAKE_SOURCE_DIR}/deps/imgui)
 
 set_target_properties(HairViewer PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
