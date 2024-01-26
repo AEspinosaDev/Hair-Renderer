@@ -9,13 +9,7 @@
 #include "engine/controller.h"
 #include "engine/camera.h"
 #include "engine/renderer.h"
-
-struct UserInterfaceStyle
-{
-    ImVec2 padding;
-    float windowBorder;
-    float windowRounding;
-};
+#include "settings.h"
 
 class HairRenderer : public Renderer
 {
@@ -23,9 +17,12 @@ private:
     Camera *m_camera;
     Controller *m_controller;
     Shader *m_shader;
+
     Mesh *m_mesh;
 
-    bool m_showUI{true};
+    GlobalSettings m_globalSettings{};
+    UserInterfaceSettings m_UISettigns{};
+    HairSettings m_hairSettings{};
 
     void init();
     void update();
@@ -41,9 +38,14 @@ private:
             glfwSetWindowShouldClose(m_window.ptr, true);
         }
 
+        if (glfwGetKey(m_window.ptr, GLFW_KEY_F11) == GLFW_PRESS)
+        {
+            m_window.set_fullscreen(m_window.fullscreen ? false : true);
+        }
+
         if (glfwGetKey(m_window.ptr, GLFW_KEY_M) == GLFW_PRESS)
         {
-            m_showUI = m_showUI ? false : true;
+            // m_showUI = m_showUI ? false : true;
         }
     }
     void mouse_callback(GLFWwindow *w, double x, double y)

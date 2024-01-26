@@ -15,26 +15,9 @@ void HairRenderer::init()
     m_shader = new Shader("resources/shaders/test.glsl", ShaderType::UNLIT);
 
     m_mesh = new Mesh();
-    Geometry g;
-    g.vertices = {{{-0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-                  {{0.5f, -0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}},
-                  {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-                  {{-0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}};
-
-    g.indices = {0, 1, 2, 2, 3, 0};
-
-    Geometry strands;
-    strands.vertices = {{{-0.5f, -0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-                        {{0.0f, -0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}},
-                        {{0.5f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}},
-                        {{1.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, 1.0f}}};
-    strands.indices = {0,1,2,3};
-
-    // m_mesh->set_geometry(g);
-    m_mesh->set_geometry(strands);
 
     // loaders::load_OBJ(m_mesh, false, "resources/models/cube.obj");
-    // loaders::load_NeuralHair(m_mesh, false, "resources/models/00100000_strands_points.ply", true, true);
+    loaders::load_NeuralHair(m_mesh, false, "resources/models/00100000_strands_points.ply", true, true);
 
     m_mesh->generate_buffers();
 
@@ -43,7 +26,6 @@ void HairRenderer::init()
 
 void HairRenderer::update()
 {
-    std::cout << user_interface_wants_to_handle_input() << std::endl;
     if (!user_interface_wants_to_handle_input())
         m_controller->handle_keyboard(m_window.ptr, 0, 0, m_time.delta);
 }
@@ -53,14 +35,14 @@ void HairRenderer::draw()
     clearColorDepthBit();
 
     m_shader->bind();
+    m_shader->set_float("u_thickness", m_hairSettings.thickness);
 
     m_shader->set_mat4("u_viewProj", m_camera->get_projection() * m_camera->get_view());
     m_shader->set_mat4("u_modelView", m_camera->get_view() * m_mesh->get_model_matrix());
     m_shader->set_mat4("u_model", m_mesh->get_model_matrix());
     m_shader->set_mat4("u_view", m_camera->get_view());
 
-    glPointSize(3.0);
-    glLineWidth(2.0);
+    glLineWidth(m_hairSettings.thickness);
     m_mesh->draw(GL_LINES);
 }
 
@@ -70,10 +52,21 @@ void HairRenderer::setup_user_interface_frame()
 
     ImGui::NewFrame();
 
-    ImGui::ShowDemoWindow(&m_showUI);
+    ImGui::ShowDemoWindow(&m_globalSettings.showUI);
 
-    ImGui::Begin("Profiler", &m_showUI); // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+    ImGui::Begin("Settings", &m_globalSettings.showUI); // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+    ImGui::SeparatorText("Profiler");
     ImGui::Text(" %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::Separator();
+    ImGui::SeparatorText("Global Settings");
+    if (ImGui::Checkbox("V-Sync", &m_settings.vSync))
+    {
+        set_v_sync(m_settings.vSync);
+    }
+    ImGui::Separator();
+    ImGui::SeparatorText("Hair Settings");
+    ImGui::DragFloat("Strand thickness", &m_hairSettings.thickness, 0.001f, 0.001f, 0.05f);
+
     ImGui::End();
 
     ImGui::Render();

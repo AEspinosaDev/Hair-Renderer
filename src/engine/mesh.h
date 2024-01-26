@@ -48,6 +48,7 @@ struct Geometry
 
 class Mesh : public Object3D
 {
+    protected:
     unsigned int m_vao;
     Geometry m_geometry;
     bool m_indexed;
@@ -62,9 +63,9 @@ public:
 
     void set_geometry(Geometry &g);
 
-    void generate_buffers();
+    virtual void generate_buffers();
 
-    void draw(GLenum drawingPrimitive = GL_TRIANGLES) const;
+    virtual void draw(GLenum drawingPrimitive = GL_TRIANGLES) const;
 
     inline static int get_number_of_instances(){ return INSTANCED_MESHES;}
 };

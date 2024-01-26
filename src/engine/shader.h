@@ -23,15 +23,16 @@ struct ShaderStageSource
 
 class Shader
 {
-    unsigned int m_ID; //PROGRAM ID
+protected:
+    unsigned int m_ID; // PROGRAM ID
     ShaderType m_type;
     std::unordered_map<const char *, int> m_uniformLocationCache;
 
 public:
     Shader(const char *filename, ShaderType t);
-    
+
     Shader(ShaderStageSource src, ShaderType t);
-    
+
     ~Shader() {}
 
     void bind() const;
@@ -63,9 +64,9 @@ public:
 private:
     unsigned int get_uniform_location(const char *name);
 
-    unsigned int compile(unsigned int type, const char *source);
+    virtual unsigned int compile(unsigned int type, const char *source);
 
-    unsigned int create_program(ShaderStageSource source);
+    virtual unsigned int create_program(ShaderStageSource source);
 
     static ShaderStageSource parse_shader(const char *filename);
 };

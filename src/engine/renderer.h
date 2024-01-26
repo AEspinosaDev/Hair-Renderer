@@ -9,11 +9,32 @@ struct Extent2D
     int width{0};
     int height{0};
 };
+struct Position2D
+{
+    int x{0};
+    int y{0};
+};
 struct Window
 {
     Extent2D extent{800, 600};
+    Position2D position{50, 50};
     const char *title;
     GLFWwindow *ptr{nullptr};
+    bool fullscreen{false};
+
+    inline void set_fullscreen(bool op)
+    {
+        fullscreen = op;
+        if (!fullscreen)
+        {
+            glfwSetWindowMonitor(ptr, NULL, position.x, position.y, extent.width, extent.height, GLFW_DONT_CARE);
+        }
+        else
+        {
+            const GLFWvidmode *mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+            glfwSetWindowMonitor(ptr, glfwGetPrimaryMonitor(), 0, 0, mode->width, mode->height, mode->refreshRate);
+        }
+    }
 };
 
 struct ContextSettings
@@ -90,6 +111,11 @@ public:
     inline Time get_time() const
     {
         return m_time;
+    }
+    inline void set_v_sync(bool op)
+    {
+        glfwSwapInterval(op);
+        m_settings.vSync = op;
     }
 #pragma endregion
 

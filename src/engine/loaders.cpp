@@ -360,8 +360,6 @@ bool loaders::load_NeuralHair(Mesh *const mesh, bool overrideGeometry, const cha
     std::string filePath = fileName;
     try
     {
-        // For most files < 1gb, pre-loading the entire file upfront and wrapping it into a
-        // stream is a net win for parsing speed, about 40% faster.
         if (preload)
         {
             byte_buffer = utils::read_file_binary(filePath);
@@ -402,12 +400,7 @@ bool loaders::load_NeuralHair(Mesh *const mesh, bool overrideGeometry, const cha
                 }
             }
         }
-        // Because most people have their own mesh types, tinyply treats parsed data as structured/typed byte buffers.
-        std::shared_ptr<tinyply::PlyData> positions, normals, colors, texcoords, faces, tripstrip;
-
-        // // The header information can be used to programmatically extract properties on elements
-        // // known to exist in the header prior to reading the data. For brevity of this sample, properties
-        // // like vertex position are hard-coded:
+        std::shared_ptr<tinyply::PlyData> positions, colors;
         try
         {
             positions = file.request_properties_from_element("vertex", {"x", "y", "z"});
@@ -415,16 +408,6 @@ bool loaders::load_NeuralHair(Mesh *const mesh, bool overrideGeometry, const cha
         catch (const std::exception &e)
         {
             std::cerr << "tinyply exception: " << e.what() << std::endl;
-        }
-
-        try
-        {
-            normals = file.request_properties_from_element("vertex", {"nx", "ny", "nz"});
-        }
-        catch (const std::exception &e)
-        {
-            if (verbose)
-                std::cerr << "tinyply exception: " << e.what() << std::endl;
         }
 
         try
@@ -437,113 +420,66 @@ bool loaders::load_NeuralHair(Mesh *const mesh, bool overrideGeometry, const cha
                 std::cerr << "tinyply exception: " << e.what() << std::endl;
         }
 
-        try
-        {
-            colors = file.request_properties_from_element("vertex", {"r", "g", "b", "a"});
-        }
-        catch (const std::exception &e)
-        {
-            if (verbose)
-                std::cerr << "tinyply exception: " << e.what() << std::endl;
-        }
-
-        try
-        {
-            texcoords = file.request_properties_from_element("vertex", {"u", "v"});
-        }
-        catch (const std::exception &e)
-        {
-            if (verbose)
-                std::cerr << "tinyply exception: " << e.what() << std::endl;
-        }
-
-        // Providing a list size hint (the last argument) is a 2x performance improvement. If you have
-        // arbitrary ply files, it is best to leave this 0.
-        try
-        {
-            faces = file.request_properties_from_element("face", {"vertex_indices"}, 3);
-        }
-        catch (const std::exception &e)
-        {
-            if (verbose)
-                std::cerr << "tinyply exception: " << e.what() << std::endl;
-        }
-
-        // Tristrips must always be read with a 0 list size hint (unless you know exactly how many elements
-        // are specifically in the file, which is unlikely);
-        try
-        {
-            tripstrip = file.request_properties_from_element("tristrips", {"vertex_indices"}, 0);
-        }
-        catch (const std::exception &e)
-        {
-            if (verbose)
-                std::cerr << "tinyply exception: " << e.what() << std::endl;
-        }
-
         if (verbose)
         {
             utils::ManualTimer readTimer;
-
             readTimer.start();
             file.read(*file_stream);
             readTimer.stop();
-
             const float parsingTime = static_cast<float>(readTimer.get()) / 1000.f;
             std::cout << "\tparsing " << size_mb << "mb in " << parsingTime << " seconds [" << (size_mb / parsingTime) << " MBps]" << std::endl;
-
             if (positions)
                 std::cout << "\tRead " << positions->count << " total vertices " << std::endl;
-            if (normals)
-                std::cout << "\tRead " << normals->count << " total vertex normals " << std::endl;
             if (colors)
                 std::cout << "\tRead " << colors->count << " total vertex colors " << std::endl;
-            if (texcoords)
-                std::cout << "\tRead " << texcoords->count << " total vertex texcoords " << std::endl;
-            if (faces)
-                std::cout << "\tRead " << faces->count << " total faces (triangles) " << std::endl;
-            if (tripstrip)
-                std::cout << "\tRead " << (tripstrip->buffer.size_bytes() / tinyply::PropertyTable[tripstrip->t].stride) << " total indices (tristrip) " << std::endl;
         }
 
         std::vector<Vertex> vertices;
-        // std::vector<unsigned int> indices;
+        std::vector<unsigned int> indices;
 
         if (positions)
         {
             const float *posData = reinterpret_cast<const float *>(positions->buffer.get());
             const unsigned char *colorData = reinterpret_cast<const unsigned char *>(colors->buffer.get());
-            for (size_t i = 0; i < positions->count; ++i)
+            for (size_t i = 0; i < positions->count - 1; i++)
             {
                 float x = posData[i * 3];
                 float y = posData[i * 3 + 1];
                 float z = posData[i * 3 + 2];
+
+                // Generate hair tangents
+                glm::vec3 pos = {x, y, z};
+                float nextX = posData[(i + 1) * 3];
+                float nextY = posData[(i + 1) * 3 + 1];
+                float nextZ = posData[(i + 1) * 3 + 2];
+                glm::vec3 nextPos = {nextX, nextY, nextZ};
+                glm::vec3 tangent = glm::normalize(nextPos - pos);
+
                 float r = (float)colorData[i * 4];
                 float g = (float)colorData[i * 4 + 1];
                 float b = (float)colorData[i * 4 + 2];
-                float a = (float)colorData[i * 4 + 3];
 
-                // Assuming Vertex has a constructor that takes position attributes
-                vertices.push_back({{x, y, z}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {r/255, g/255, b/255}}); // You can set color and other attributes as needed
+                float nextR = (float)colorData[(i + 1) * 4];
+                float nextG = (float)colorData[(i + 1) * 4 + 1];
+                float nextB = (float)colorData[(i + 1) * 4 + 2];
+
+                vertices.push_back({pos, {0.0f, 0.0f, 0.0f}, tangent, {0.0f, 0.0f}, {r / 255, g / 255, b / 255}});
+                if (i == positions->count - 2)
+                    vertices.push_back({nextPos, {0.0f, 0.0f, 0.0f}, tangent, {0.0f, 0.0f}, {r / 255, g / 255, b / 255}});
+
+                if (r == nextR && g == nextG && b == nextB)
+                {
+                    indices.push_back(i);
+                    indices.push_back(i + 1);
+                }else{
+                    // break;
+                }
             }
         }
 
-        // const int *facesData = reinterpret_cast<const int *>(faces->buffer.get());
-        // for (size_t i = 0; i < faces->count; i += 3)
-        // {
-        //     // Assuming faces are triangles, so we extract the vertex indices
-        //     unsigned int vertexIndex1 = static_cast<unsigned int>(facesData[i]);
-        //     unsigned int vertexIndex2 = static_cast<unsigned int>(facesData[i + 1]);
-        //     unsigned int vertexIndex3 = static_cast<unsigned int>(facesData[i + 2]);
-
-        //     indices.push_back(vertexIndex1);
-        //     indices.push_back(vertexIndex2);
-        //     indices.push_back(vertexIndex3);
-        // }
-
         Geometry g;
         g.vertices = vertices;
-        // g.indices = indices;
+        g.indices = indices;
         mesh->set_geometry(g);
 
         return true;
