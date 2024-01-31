@@ -49,6 +49,8 @@ public:
         }
         return m_view;
     }
+    virtual void user_interface_frame(bool displayName = false ,bool includeParent = false){}
+    
 };
 
 #endif

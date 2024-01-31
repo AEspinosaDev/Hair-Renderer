@@ -12,11 +12,14 @@ struct UserInterfaceSettings
 };
 struct HairSettings
 {
-    float thickness = 0.01f;
+    float thickness = 0.005f;
 };
 struct GlobalSettings
 {
     bool showUI{true};
+    glm::vec3 ambientColor = glm::vec3(1.0f);
+    float ambientStrength = 0.3f;
+    
 };
 
 #endif

@@ -11,6 +11,7 @@ uniform mat4 u_viewProj;
 uniform mat4 u_modelView;
 uniform mat4 u_view;
 uniform mat4 u_model;
+uniform vec3 u_lightPos;
 
 out vec3 _pos;
 out vec3 _normal;
@@ -19,7 +20,7 @@ out vec3 _lightPos;
 void main() {
     _pos = (u_modelView * vec4(position, 1.0)).xyz;
     _normal = normalize(mat3(transpose(inverse(u_modelView))) * normal);
-    _lightPos = (u_view * vec4(vec3(5.0,3.0,-3.0), 1.0)).xyz;
+    _lightPos = (u_view * vec4(u_lightPos, 1.0)).xyz;
 
     gl_Position = u_viewProj  * u_model * vec4(position, 1.0);
 
@@ -59,12 +60,15 @@ vec3 phong() {
 
     // float att = computeAttenuation();
      float att = 1.0;
+    vec3 ambient = vec3(1.0f)*0.2f;
 
 
-    return (diffuse + specular) * color * att * 1.0;
+    return (ambient +diffuse + specular) * color * att * 1.0;
 
 }
 
 void main() {
+    // FragColor = vec4(vec3(1.0,0.0,0.0), 1.0);
     FragColor = vec4(phong(), 1.0);
+
 }

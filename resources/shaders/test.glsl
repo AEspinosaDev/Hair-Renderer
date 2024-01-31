@@ -9,13 +9,17 @@ layout(location = 4) in vec3 color;
 
 uniform mat4 u_viewProj;
 uniform mat4 u_model;
+uniform mat4 u_view;
+uniform vec3 u_lightPos;
 
+out vec3 v_lightPos;
 out vec3 v_color;
 
 void main() {
     gl_Position = u_viewProj * u_model * vec4(position, 1.0);
 
     v_color = color;
+    v_lightPos = (u_view * vec4(u_lightPos,1.0)).xyz;
 }
 
 #shader geometry
@@ -25,8 +29,10 @@ layout(lines) in;
 layout(triangle_strip, max_vertices = 4) out;
 
 in vec3 v_color[];
+in vec3 v_lightPos[];
 
 out vec3 g_color;
+out vec3 g_lightPos;
 
 out vec3 g_pos;
 out vec3 g_normal;
@@ -53,6 +59,7 @@ void main() {
         gl_Position = startPoint + startNormal * halfLength;
         g_pos = gl_Position.xyz;
         g_color = v_color[0];
+        g_lightPos = v_lightPos[0];
         g_normal = normalize(cross(startNormal.xyz,strandDirection.xyz));
         g_tangent = strandDirection.xyz;
         EmitVertex();
@@ -60,6 +67,7 @@ void main() {
         gl_Position = endPoint + endNormal * halfLength;
         g_pos = gl_Position.xyz;
         g_color = v_color[1];
+         g_lightPos = v_lightPos[0];
         g_normal = normalize(cross(endNormal.xyz,strandDirection.xyz));
         g_tangent = strandDirection.xyz;
         EmitVertex();
@@ -67,6 +75,7 @@ void main() {
         gl_Position = startPoint - startNormal * halfLength;
         g_pos = gl_Position.xyz;
         g_color = v_color[0];
+         g_lightPos = v_lightPos[0];
         g_normal = normalize(cross(startNormal.xyz,strandDirection.xyz));
         g_tangent = strandDirection.xyz;
         EmitVertex();
@@ -74,6 +83,7 @@ void main() {
         gl_Position = endPoint - endNormal * halfLength;
         g_pos = gl_Position.xyz;
         g_color = v_color[1];
+         g_lightPos = v_lightPos[0];
         g_normal = normalize(cross(endNormal.xyz,strandDirection.xyz));
         g_tangent = strandDirection.xyz;
         EmitVertex();
@@ -86,6 +96,8 @@ void main() {
 #version 460 core
 
 in vec3 g_color;
+in flat vec3 g_lightPos;
+
 in vec3 g_pos;
 in vec3 g_normal;
 in vec3 g_tangent;
@@ -94,7 +106,7 @@ out vec4 FragColor;
 
 vec3 phong() {
 
-    vec3 lightDir = normalize(vec3(5.0,3.0,-3.0) - g_pos);
+    vec3 lightDir = normalize(g_lightPos- g_pos);
     vec3 viewDir = normalize(-g_pos);
     vec3 halfVector = normalize(lightDir + viewDir);
 

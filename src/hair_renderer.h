@@ -8,6 +8,7 @@
 #include "engine/loaders.h"
 #include "engine/controller.h"
 #include "engine/camera.h"
+#include "engine/light.h"
 #include "engine/renderer.h"
 #include "settings.h"
 
@@ -16,9 +17,14 @@ class HairRenderer : public Renderer
 private:
     Camera *m_camera;
     Controller *m_controller;
-    Shader *m_shader;
 
-    Mesh *m_mesh;
+    Mesh *m_hair;
+    Shader *m_hairShader;
+
+    Mesh *m_head;
+    Shader* m_headShader;
+
+    PointLight* m_light;
 
     GlobalSettings m_globalSettings{};
     UserInterfaceSettings m_UISettigns{};

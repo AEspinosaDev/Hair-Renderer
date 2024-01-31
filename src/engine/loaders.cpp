@@ -315,32 +315,41 @@ bool loaders::load_PLY(Mesh *const mesh, bool overrideGeometry, const char *file
         if (positions)
         {
             const float *posData = reinterpret_cast<const float *>(positions->buffer.get());
-            for (size_t i = 0; i < positions->count; ++i)
+            const float *normalData;
+            if (normals)
+                normalData = reinterpret_cast<const float *>(normals->buffer.get());
+
+            for (size_t i = 0; i < positions->count; i++)
             {
                 float x = posData[i * 3];
                 float y = posData[i * 3 + 1];
                 float z = posData[i * 3 + 2];
 
+                float nx = normals ? normalData[i * 3] : 0.0f;
+                float ny = normals ? normalData[i * 3 + 1] : 0.0f;
+                float nz = normals ? normalData[i * 3 + 2] : 0.0f;
+
                 // Assuming Vertex has a constructor that takes position attributes
-                vertices.push_back({{x, y, z}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}}); // You can set color and other attributes as needed
+                vertices.push_back({{x, y, z}, {nx,ny,nz}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}}); // You can set color and other attributes as needed
             }
         }
-        const int *facesData = reinterpret_cast<const int *>(faces->buffer.get());
-        for (size_t i = 0; i < faces->count; i += 3)
+        unsigned *facesData = reinterpret_cast<unsigned *>(faces->buffer.get());
+        for (size_t i = 0; i < faces->count; ++i)
         {
+            
             // Assuming faces are triangles, so we extract the vertex indices
             unsigned int vertexIndex1 = static_cast<unsigned int>(facesData[i]);
             unsigned int vertexIndex2 = static_cast<unsigned int>(facesData[i + 1]);
             unsigned int vertexIndex3 = static_cast<unsigned int>(facesData[i + 2]);
 
-            indices.push_back(vertexIndex1);
-            indices.push_back(vertexIndex2);
-            indices.push_back(vertexIndex3);
+            indices.push_back(facesData[3*i]);
+            indices.push_back(facesData[3*i+1]);
+            indices.push_back(facesData[3*i+2]);
         }
 
         Geometry g;
         g.vertices = vertices;
-        // g.indices = indices;
+        g.indices = indices;
         mesh->set_geometry(g);
 
         return true;
@@ -471,7 +480,9 @@ bool loaders::load_NeuralHair(Mesh *const mesh, bool overrideGeometry, const cha
                 {
                     indices.push_back(i);
                     indices.push_back(i + 1);
-                }else{
+                }
+                else
+                {
                     // break;
                 }
             }

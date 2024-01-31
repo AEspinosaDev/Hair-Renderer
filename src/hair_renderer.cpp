@@ -11,15 +11,20 @@ void HairRenderer::init()
 
     m_controller = new Controller(m_camera);
 
-    // m_shader = new Shader("resources/shaders/phong.glsl",  ShaderType::LIT);
-    m_shader = new Shader("resources/shaders/test.glsl", ShaderType::UNLIT);
+    m_hairShader = new Shader("resources/shaders/test.glsl", ShaderType::LIT);
+    m_headShader = new Shader("resources/shaders/phong.glsl", ShaderType::LIT);
 
-    m_mesh = new Mesh();
+    m_light = new PointLight();
+    m_light->set_position({5.0f, 3.0f, 3.0f});
 
-    // loaders::load_OBJ(m_mesh, false, "resources/models/cube.obj");
-    loaders::load_NeuralHair(m_mesh, false, "resources/models/00100000_strands_points.ply", true, true);
+    m_hair = new Mesh();
+    m_head = new Mesh();
 
-    m_mesh->generate_buffers();
+    loaders::load_NeuralHair(m_hair, false, "resources/models/hair_blender.ply", true, true);
+    loaders::load_PLY(m_head, false, "resources/models/head_blender.ply", true, true);
+
+    m_hair->generate_buffers();
+    m_head->generate_buffers();
 
     glDisable(GL_CULL_FACE);
 }
@@ -34,16 +39,27 @@ void HairRenderer::draw()
 {
     clearColorDepthBit();
 
-    m_shader->bind();
-    m_shader->set_float("u_thickness", m_hairSettings.thickness);
+    m_headShader->bind();
 
-    m_shader->set_mat4("u_viewProj", m_camera->get_projection() * m_camera->get_view());
-    m_shader->set_mat4("u_modelView", m_camera->get_view() * m_mesh->get_model_matrix());
-    m_shader->set_mat4("u_model", m_mesh->get_model_matrix());
-    m_shader->set_mat4("u_view", m_camera->get_view());
+    m_headShader->set_mat4("u_viewProj", m_camera->get_projection() * m_camera->get_view());
+    m_headShader->set_mat4("u_modelView", m_camera->get_view() * m_hair->get_model_matrix());
+    m_headShader->set_mat4("u_model", m_hair->get_model_matrix());
+    m_headShader->set_mat4("u_view", m_camera->get_view());
+    m_light->cache_uniforms(m_headShader);
+
+    m_head->draw();
+
+    m_hairShader->bind();
+    m_hairShader->set_float("u_thickness", m_hairSettings.thickness);
+
+    m_hairShader->set_mat4("u_viewProj", m_camera->get_projection() * m_camera->get_view());
+    m_hairShader->set_mat4("u_modelView", m_camera->get_view() * m_hair->get_model_matrix());
+    m_hairShader->set_mat4("u_model", m_hair->get_model_matrix());
+    m_hairShader->set_mat4("u_view", m_camera->get_view());
+    m_light->cache_uniforms(m_hairShader);
 
     glLineWidth(m_hairSettings.thickness);
-    m_mesh->draw(GL_LINES);
+    m_hair->draw(GL_LINES);
 }
 
 void HairRenderer::setup_user_interface_frame()
@@ -66,6 +82,9 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::Separator();
     ImGui::SeparatorText("Hair Settings");
     ImGui::DragFloat("Strand thickness", &m_hairSettings.thickness, 0.001f, 0.001f, 0.05f);
+    ImGui::Separator();
+    ImGui::SeparatorText("Enviroment Settings");
+    m_light->user_interface_frame(true);
 
     ImGui::End();
 

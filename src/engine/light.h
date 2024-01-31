@@ -72,6 +72,8 @@ public:
     virtual inline bool get_angle_dependant_bias() const { return m_shadow.angleDependableBias; }
     virtual inline void set_angle_dependant_bias(bool o) { m_shadow.angleDependableBias = o; }
 
+    virtual void user_interface_frame(bool displayName = false,bool includeParent = false);
+
     // Read only
     // virtual const Texture *const get_shadow_map() const { return m_shadow.map; }
     virtual LightType get_light_type() const { return m_lighType; }
@@ -97,6 +99,9 @@ public:
 
     void cache_uniforms(Shader *shader) const;
 
+    virtual void user_interface_frame(bool displayName = false,bool includeParent = false);
+
+
     inline static int get_number_of_instances() { return INSTANCED_POINT_LIGHTS; }
 };
 
@@ -115,6 +120,9 @@ public:
     inline void set_direction(glm::vec3 d) { m_direction = d; }
 
     void cache_uniforms(Shader *shader) const;
+
+    virtual void user_interface_frame(bool displayName = false,bool includeParent = false);
+
 
     inline static int get_number_of_instances() { return INSTANCED_DIRECTIONAL_LIGHTS; }
 };

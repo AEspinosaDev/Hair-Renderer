@@ -5,6 +5,7 @@
 #include <vector>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include "core.h"
 
 struct Transform
 {
@@ -186,6 +187,41 @@ public:
     virtual std::vector<Object3D *> get_children() const { return m_children; }
 
     virtual Object3D *get_parent() const { return m_parent; }
+
+    virtual void user_interface_frame(bool displayName = false ,bool includeParent = false)
+    {
+        if(displayName) ImGui::Text(m_name);
+
+        ImGui::Spacing();
+        ImGui::SeparatorText("Transform");
+
+        const float PI = 3.14159265359f;
+
+        float position[3] = {get_position().x,
+                             get_position().y,
+                             get_position().z};
+        if (ImGui::DragFloat3("Position", position, 0.1f))
+        {
+            set_position(glm::vec3(position[0], position[1], position[2]));
+        };
+        float rotation[3] = {(get_rotation().x * 180) / PI,
+                             (get_rotation().y * 180) / PI,
+                             (get_rotation().z * 180) / PI};
+        if (ImGui::DragFloat3("Rotation", rotation, 0.1f))
+        {
+            set_rotation(glm::vec3((rotation[0] * PI) / 180, (rotation[1] * PI) / 180, (rotation[2] * PI) / 180));
+        };
+        float scale[3] = {get_scale().x,
+                          get_scale().y,
+                          get_scale().z};
+        if (ImGui::DragFloat3("Scale", scale, 0.1f))
+        {
+            set_scale(glm::vec3(scale[0], scale[1], scale[2]));
+        };
+
+        ImGui::Spacing();
+        ImGui::Separator();
+    }
 };
 
 #endif
