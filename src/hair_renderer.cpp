@@ -68,7 +68,7 @@ void HairRenderer::setup_user_interface_frame()
 
     ImGui::NewFrame();
 
-    ImGui::ShowDemoWindow(&m_globalSettings.showUI);
+    //ImGui::ShowDemoWindow(&m_globalSettings.showUI);
 
     ImGui::Begin("Settings", &m_globalSettings.showUI); // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
     ImGui::SeparatorText("Profiler");
@@ -83,8 +83,9 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::SeparatorText("Hair Settings");
     ImGui::DragFloat("Strand thickness", &m_hairSettings.thickness, 0.001f, 0.001f, 0.05f);
     ImGui::Separator();
-    ImGui::SeparatorText("Enviroment Settings");
-    m_light->user_interface_frame(true);
+    ImGui::SeparatorText("Lighting Settings");
+    gui::draw_transform_properties(m_light);
+    // m_light->user_interface_frame(true);
 
     ImGui::End();
 

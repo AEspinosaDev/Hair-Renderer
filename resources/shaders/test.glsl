@@ -116,7 +116,7 @@ vec3 phong() {
     vec3 specular = pow(max(dot(g_normal, halfVector), 0.0), 20.0) * 5.0 * vec3(1.0,1.0,1.0);
 
     vec3 color =  vec3(1.0,0.0,0.0); //surface
-
+    
     // float att = computeAttenuation();
      float att = 1.0;
 

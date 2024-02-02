@@ -9,8 +9,11 @@
 #include "engine/controller.h"
 #include "engine/camera.h"
 #include "engine/light.h"
+#include "engine/gui_layer.h"
 #include "engine/renderer.h"
 #include "settings.h"
+
+using namespace glib;
 
 class HairRenderer : public Renderer
 {

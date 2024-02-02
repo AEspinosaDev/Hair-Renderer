@@ -7,221 +7,190 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "core.h"
 
-struct Transform
+namespace glib
 {
 
-    glm::mat4 worldMatrix;
-    glm::vec3 position;
-    glm::vec3 rotation;
-    glm::vec3 scale;
-    glm::vec3 right;
-    glm::vec3 up;
-    glm::vec3 forward;
-
-public:
-    Transform(
-        glm::mat4 worldMatrix = glm::mat4(1.0f),
-        glm::vec3 rotation = glm::vec3(0.0f),
-        glm::vec3 scale = glm::vec3(1.0f),
-        glm::vec3 position = glm::vec3(0.0f),
-        glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
-        glm::vec3 forward = glm::vec3(0.0f, 0.0f, 1.0f),
-        glm::vec3 right = glm::vec3(1.0f, 0.0f, 0.0f)
-
-            ) : position(position),
-                scale(scale),
-                rotation(rotation),
-                up(up),
-                forward(forward),
-                right(right),
-                worldMatrix(worldMatrix)
+    struct Transform
     {
-    }
-};
 
-typedef enum Object3DType
-{
-    MESH,
-    CAMERA,
-    LIGHT,
-} Object3DType;
+        glm::mat4 worldMatrix;
+        glm::vec3 position;
+        glm::vec3 rotation;
+        glm::vec3 scale;
+        glm::vec3 right;
+        glm::vec3 up;
+        glm::vec3 forward;
 
-class Object3D
-{
-protected:
-    const char *m_name;
+    public:
+        Transform(
+            glm::mat4 worldMatrix = glm::mat4(1.0f),
+            glm::vec3 rotation = glm::vec3(0.0f),
+            glm::vec3 scale = glm::vec3(1.0f),
+            glm::vec3 position = glm::vec3(0.0f),
+            glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f),
+            glm::vec3 forward = glm::vec3(0.0f, 0.0f, 1.0f),
+            glm::vec3 right = glm::vec3(1.0f, 0.0f, 0.0f)
 
-    Transform m_transform;
-
-    std::vector<Object3D *> m_children;
-    Object3D *m_parent;
-
-    const Object3DType TYPE;
-
-    bool m_enabled{true};
-    bool m_isDirty{true};
-
-public:
-    Object3D(const char *na, glm::vec3 p, Object3DType t) : TYPE(t), m_name(na),
-                                                            m_parent(nullptr)
-    {
-        m_transform.position = p;
-    }
-
-    Object3D(glm::vec3 p, Object3DType t) : TYPE(t), m_name(""),
-                                            m_parent(nullptr)
-    {
-        m_transform.position = p;
-    }
-    Object3D(Object3DType t) : TYPE(t), m_name(""),
-                               m_parent(nullptr)
-    {
-        m_transform.position = glm::vec3(0.0f);
-    }
-
-    ~Object3D()
-    {
-        // delete[] children;
-        delete m_parent;
-    }
-
-    virtual inline Object3DType get_type() const { return TYPE; };
-    virtual void set_position(const glm::vec3 p)
-    {
-        m_transform.position = p;
-        m_isDirty = true;
-    }
-
-    virtual inline glm::vec3 get_position() const { return m_transform.position; };
-
-    virtual void set_rotation(const glm::vec3 p)
-    {
-        m_transform.rotation = p;
-
-        // Update forward
-        glm::vec3 direction;
-        direction.x = cos(glm::radians(p.x)) * cos(glm::radians(p.y));
-        direction.y = sin(glm::radians(p.y));
-        direction.z = sin(glm::radians(p.x)) * cos(glm::radians(p.y));
-        m_transform.forward = -glm::normalize(direction);
-        // Update up
-
-        // Update right
-        m_transform.right = glm::cross(m_transform.forward, m_transform.up);
-
-        m_isDirty = true;
-    }
-
-    virtual inline glm::vec3 get_rotation() const { return m_transform.rotation; };
-
-    virtual void set_scale(const glm::vec3 s)
-    {
-        m_transform.scale = s;
-        m_isDirty = true;
-    }
-
-    virtual void set_scale(const float s)
-    {
-        m_transform.scale = glm::vec3(s);
-        m_isDirty = true;
-    }
-
-    virtual inline glm::vec3 get_scale() const { return m_transform.scale; }
-
-    virtual inline Transform get_transform() const { return m_transform; }
-
-    virtual inline void set_active(const bool s)
-    {
-        m_enabled = s;
-        m_isDirty = true;
-    }
-
-    virtual inline float get_pitch() const { return m_transform.rotation.y; }
-
-    virtual inline void set_pitch(float p) { set_rotation({m_transform.rotation.x, p, m_transform.rotation.z}); }
-
-    virtual inline void set_yaw(float p) { set_rotation({p, m_transform.rotation.y, m_transform.rotation.z}); }
-
-    virtual inline float get_yaw() const { return m_transform.rotation.x; }
-
-    virtual inline bool is_active() { return m_enabled; }
-
-    virtual inline bool is_dirty() { return m_isDirty; }
-
-    virtual inline const char *get_name() const { return m_name; }
-
-    virtual inline void set_name(const char *s) { m_name = s; }
-
-    virtual void set_transform(Transform t)
-    {
-        m_transform = t;
-        m_isDirty = true;
-    }
-
-    virtual glm::mat4 get_model_matrix()
-    {
-        if (m_isDirty)
+                ) : position(position),
+                    scale(scale),
+                    rotation(rotation),
+                    up(up),
+                    forward(forward),
+                    right(right),
+                    worldMatrix(worldMatrix)
         {
-
-            m_transform.worldMatrix = glm::mat4(1.0f);
-            m_transform.worldMatrix = glm::translate(m_transform.worldMatrix, m_transform.position);
-            m_transform.worldMatrix = glm::rotate(m_transform.worldMatrix, m_transform.rotation.x, glm::vec3(1, 0, 0));
-            m_transform.worldMatrix = glm::rotate(m_transform.worldMatrix, m_transform.rotation.y, glm::vec3(0, 1, 0));
-            m_transform.worldMatrix = glm::rotate(m_transform.worldMatrix, m_transform.rotation.z, glm::vec3(0, 0, 1));
-            m_transform.worldMatrix = glm::scale(m_transform.worldMatrix, m_transform.scale);
-
-            //  Dirty flag
-            m_transform.worldMatrix = m_parent ? m_parent->get_model_matrix() * m_transform.worldMatrix : m_transform.worldMatrix;
-
-            m_isDirty = false;
         }
-        return m_transform.worldMatrix;
-    }
+    };
 
-    virtual void add_child(Object3D *child)
+    typedef enum Object3DType
     {
-        child->m_parent = this;
-        m_children.push_back(child);
-    }
+        MESH,
+        CAMERA,
+        LIGHT,
+    } Object3DType;
 
-    virtual std::vector<Object3D *> get_children() const { return m_children; }
-
-    virtual Object3D *get_parent() const { return m_parent; }
-
-    virtual void user_interface_frame(bool displayName = false ,bool includeParent = false)
+    class Object3D
     {
-        if(displayName) ImGui::Text(m_name);
+    protected:
+        const char *m_name;
 
-        ImGui::Spacing();
-        ImGui::SeparatorText("Transform");
+        Transform m_transform;
 
-        const float PI = 3.14159265359f;
+        std::vector<Object3D *> m_children;
+        Object3D *m_parent;
 
-        float position[3] = {get_position().x,
-                             get_position().y,
-                             get_position().z};
-        if (ImGui::DragFloat3("Position", position, 0.1f))
+        const Object3DType TYPE;
+
+        bool m_enabled{true};
+        bool m_isDirty{true};
+
+    public:
+        Object3D(const char *na, glm::vec3 p, Object3DType t) : TYPE(t), m_name(na),
+                                                                m_parent(nullptr)
         {
-            set_position(glm::vec3(position[0], position[1], position[2]));
-        };
-        float rotation[3] = {(get_rotation().x * 180) / PI,
-                             (get_rotation().y * 180) / PI,
-                             (get_rotation().z * 180) / PI};
-        if (ImGui::DragFloat3("Rotation", rotation, 0.1f))
-        {
-            set_rotation(glm::vec3((rotation[0] * PI) / 180, (rotation[1] * PI) / 180, (rotation[2] * PI) / 180));
-        };
-        float scale[3] = {get_scale().x,
-                          get_scale().y,
-                          get_scale().z};
-        if (ImGui::DragFloat3("Scale", scale, 0.1f))
-        {
-            set_scale(glm::vec3(scale[0], scale[1], scale[2]));
-        };
+            m_transform.position = p;
+        }
 
-        ImGui::Spacing();
-        ImGui::Separator();
-    }
-};
+        Object3D(glm::vec3 p, Object3DType t) : TYPE(t), m_name(""),
+                                                m_parent(nullptr)
+        {
+            m_transform.position = p;
+        }
+        Object3D(Object3DType t) : TYPE(t), m_name(""),
+                                   m_parent(nullptr)
+        {
+            m_transform.position = glm::vec3(0.0f);
+        }
+
+        ~Object3D()
+        {
+            // delete[] children;
+            delete m_parent;
+        }
+
+        virtual inline Object3DType get_type() const { return TYPE; };
+        virtual void set_position(const glm::vec3 p)
+        {
+            m_transform.position = p;
+            m_isDirty = true;
+        }
+
+        virtual inline glm::vec3 get_position() const { return m_transform.position; };
+
+        virtual void set_rotation(const glm::vec3 p)
+        {
+            m_transform.rotation = p;
+
+            // Update forward
+            glm::vec3 direction;
+            direction.x = cos(glm::radians(p.x)) * cos(glm::radians(p.y));
+            direction.y = sin(glm::radians(p.y));
+            direction.z = sin(glm::radians(p.x)) * cos(glm::radians(p.y));
+            m_transform.forward = -glm::normalize(direction);
+            // Update up
+
+            // Update right
+            m_transform.right = glm::cross(m_transform.forward, m_transform.up);
+
+            m_isDirty = true;
+        }
+
+        virtual inline glm::vec3 get_rotation() const { return m_transform.rotation; };
+
+        virtual void set_scale(const glm::vec3 s)
+        {
+            m_transform.scale = s;
+            m_isDirty = true;
+        }
+
+        virtual void set_scale(const float s)
+        {
+            m_transform.scale = glm::vec3(s);
+            m_isDirty = true;
+        }
+
+        virtual inline glm::vec3 get_scale() const { return m_transform.scale; }
+
+        virtual inline Transform get_transform() const { return m_transform; }
+
+        virtual inline void set_active(const bool s)
+        {
+            m_enabled = s;
+            m_isDirty = true;
+        }
+
+        virtual inline float get_pitch() const { return m_transform.rotation.y; }
+
+        virtual inline void set_pitch(float p) { set_rotation({m_transform.rotation.x, p, m_transform.rotation.z}); }
+
+        virtual inline void set_yaw(float p) { set_rotation({p, m_transform.rotation.y, m_transform.rotation.z}); }
+
+        virtual inline float get_yaw() const { return m_transform.rotation.x; }
+
+        virtual inline bool is_active() { return m_enabled; }
+
+        virtual inline bool is_dirty() { return m_isDirty; }
+
+        virtual inline const char *get_name() const { return m_name; }
+
+        virtual inline void set_name(const char *s) { m_name = s; }
+
+        virtual void set_transform(Transform t)
+        {
+            m_transform = t;
+            m_isDirty = true;
+        }
+
+        virtual glm::mat4 get_model_matrix()
+        {
+            if (m_isDirty)
+            {
+
+                m_transform.worldMatrix = glm::mat4(1.0f);
+                m_transform.worldMatrix = glm::translate(m_transform.worldMatrix, m_transform.position);
+                m_transform.worldMatrix = glm::rotate(m_transform.worldMatrix, m_transform.rotation.x, glm::vec3(1, 0, 0));
+                m_transform.worldMatrix = glm::rotate(m_transform.worldMatrix, m_transform.rotation.y, glm::vec3(0, 1, 0));
+                m_transform.worldMatrix = glm::rotate(m_transform.worldMatrix, m_transform.rotation.z, glm::vec3(0, 0, 1));
+                m_transform.worldMatrix = glm::scale(m_transform.worldMatrix, m_transform.scale);
+
+                //  Dirty flag
+                m_transform.worldMatrix = m_parent ? m_parent->get_model_matrix() * m_transform.worldMatrix : m_transform.worldMatrix;
+
+                m_isDirty = false;
+            }
+            return m_transform.worldMatrix;
+        }
+
+        virtual void add_child(Object3D *child)
+        {
+            child->m_parent = this;
+            m_children.push_back(child);
+        }
+
+        virtual std::vector<Object3D *> get_children() const { return m_children; }
+
+        virtual Object3D *get_parent() const { return m_parent; }
+    };
+}
 
 #endif
