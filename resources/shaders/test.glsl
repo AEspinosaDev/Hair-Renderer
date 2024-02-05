@@ -14,10 +14,12 @@ uniform vec3 u_lightPos;
 
 out vec3 v_lightPos;
 out vec3 v_color;
+out vec3 v_tangent;
 
 void main() {
     gl_Position = u_viewProj * u_model * vec4(position, 1.0);
 
+    v_tangent = tangent;
     v_color = color;
     v_lightPos = (u_view * vec4(u_lightPos,1.0)).xyz;
 }
@@ -30,6 +32,7 @@ layout(triangle_strip, max_vertices = 4) out;
 
 in vec3 v_color[];
 in vec3 v_lightPos[];
+in vec3 v_tangent[];
 
 out vec3 g_color;
 out vec3 g_lightPos;
@@ -48,6 +51,8 @@ void main() {
 
         vec4 startViewDir = -startPoint;
         vec4 endViewDir = -endPoint;
+
+        // vec3 interpolatedDirection = mix(v_tangent[0],v_tangent[1],0.5)
 
         vec3 crossStartNormal =normalize(cross(strandDirection.xyz,startViewDir.xyz));
         vec3 crossEndNormal = normalize(cross(strandDirection.xyz,endViewDir.xyz));

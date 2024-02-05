@@ -32,6 +32,7 @@ private:
     GlobalSettings m_globalSettings{};
     UserInterfaceSettings m_UISettigns{};
     HairSettings m_hairSettings{};
+    HeadSettings m_headSettings{};
 
     void init();
     void update();

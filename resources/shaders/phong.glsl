@@ -33,6 +33,7 @@ in vec3 _pos;
 in vec3 _normal;
 in vec3 _lightPos;
 
+uniform vec3 u_skinColor;
 
 out vec4 FragColor;
 
@@ -56,7 +57,7 @@ vec3 phong() {
     //Blinn specular term
     vec3 specular = pow(max(dot(_normal, halfVector), 0.0), 20.0) * 5.0 * vec3(1.0,1.0,1.0);
 
-    vec3 color =  vec3(1.0,0.0,0.0); //surface
+    vec3 color =  u_skinColor; //surface
 
     // float att = computeAttenuation();
      float att = 1.0;

@@ -1,6 +1,7 @@
 #ifndef __LOADERS__
 #define __LOADERS__
 
+#include <random>
 #include <unordered_map>
 #include <tiny_obj_loader.h>
 #include <tinyply.h>

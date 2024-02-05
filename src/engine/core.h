@@ -38,4 +38,5 @@ void GLFW_check_error();
 void GLclearError();
 bool GLlogCall(const char *function, const char *file, int line);
 
+
 #endif

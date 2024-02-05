@@ -46,6 +46,7 @@ void HairRenderer::draw()
     m_headShader->set_mat4("u_model", m_hair->get_model_matrix());
     m_headShader->set_mat4("u_view", m_camera->get_view());
     m_light->cache_uniforms(m_headShader);
+    m_headShader->set_vec3("u_skinColor",m_headSettings.skinColor);
 
     m_head->draw();
 
@@ -85,7 +86,12 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::Separator();
     ImGui::SeparatorText("Lighting Settings");
     gui::draw_transform_properties(m_light);
-    // m_light->user_interface_frame(true);
+      ImGui::Separator();
+    ImGui::SeparatorText("Head Settings");
+    
+    ImGui::ColorEdit3("Skin color",(float*)&m_headSettings.skinColor);
+    ImGui::Separator();
+    ImGui::SeparatorText("Lighting Settings");
 
     ImGui::End();
 

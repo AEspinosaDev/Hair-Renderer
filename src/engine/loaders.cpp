@@ -500,25 +500,55 @@ namespace glib
             // Neighbour adjacency list;
             for (size_t i = 0; i < rootsIndices.size(); i++)
             {
+                // vertices[rootsIndices[i]].color = {1.0f,0.0f,0.f};
                 for (size_t j = 0; j < rootsIndices.size(); j++)
                 {
                     if (i == j)
                         continue;
                     if (glm::distance(vertices[rootsIndices[i]].position, vertices[rootsIndices[j]].position) <= radius)
                     {
-                        neighbours[i].push_back(j);
+                        neighbours[i].push_back(rootsIndices[j]);
                     }
                 }
             }
-            //Recorres los vecinos de cada root.
-            // Por cada vecino ocn el root, trazas el vector unitario que los une
-            //Y anañades un nuevo punto e indice en la direccion unitaria que los une multiplicado por un factor aleatorio 
-            //y luego multiplicado por el vetor perpendicular a la direccion
-            //Una vez tienes el nuevo root, lo construyes
-            //La posicion del vertice i del root es igual a la interpolada de los vertices i de los vecinos
-            //Asi hasta que se acaben.
-            //Haces esto por cada vecino.
+            std::random_device rd;  // obtain a random number from hardware
+            std::mt19937 gen(rd()); // seed the generator
+            // Recorres los vecinos de cada root.
 
+            int lastIndex = indices.back();
+            for (size_t i = 0; i < neighbours.size(); i++)
+            {
+                for (size_t j = 0; j < neighbours[i].size(); j++)
+                {
+                    // Por cada vecino ocn el root, trazas el vector que los une
+                    glm::vec3 dir = vertices[neighbours[i][j]].position - vertices[rootsIndices[i]].position;
+                    float offset = ((float)rand()) / RAND_MAX;
+                    // Y anañades un nuevo punto e indice en la direccion unitaria que los une multiplicado por un factor aleatorio
+                    glm::vec3 newPos = vertices[rootsIndices[i]].position + dir * offset;
+                    // y luego multiplicado por el vetor perpendicular a la direccion
+                    // Una vez tienes el nuevo root, lo construyes
+                    // vertices.push_back({newPos+dir*offset, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}});
+                    lastIndex++;
+                    // indices.push_back(lastIndex);
+                    for (size_t k = 0; k < 90; k += 2)
+                    {
+                        vertices.push_back({vertices[rootsIndices[i]+k].position + dir * offset, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}});
+
+
+                        indices.push_back(lastIndex);
+                        newPos = vertices[rootsIndices[i] + k].position + dir * offset;
+                        vertices.push_back({newPos, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}});
+                        lastIndex++;
+                        indices.push_back(lastIndex);
+                    }
+                }
+            }
+
+            // La posicion del vertice i del root es igual a la interpolada de los vertices i de los vecinos
+            // Asi hasta que se acaben.
+            // Para controlar que no interpole entre direcciones del pelo muy distintas, si la tangente de alguno de los vertices i de los vecinos forma un angulo mayor
+            // de 90 el peso de ese vertice es 0,
+            // Haces esto por cada vecino.
 
             Geometry g;
             g.vertices = vertices;
