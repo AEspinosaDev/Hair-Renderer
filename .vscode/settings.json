@@ -73,6 +73,7 @@
         "any": "cpp",
         "codecvt": "cpp",
         "future": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "stack": "cpp"
     }
 }

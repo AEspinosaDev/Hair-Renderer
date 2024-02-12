@@ -15,16 +15,30 @@ void HairRenderer::init()
     m_headShader = new Shader("resources/shaders/phong.glsl", ShaderType::LIT);
 
     m_light = new PointLight();
-    m_light->set_position({5.0f, 3.0f, 3.0f});
+    m_light->set_position({5.0f, 3.0f, -7.0f});
 
     m_hair = new Mesh();
     m_head = new Mesh();
 
-    loaders::load_NeuralHair(m_hair, false, "resources/models/hair_blender.ply", true, true);
-    loaders::load_PLY(m_head, false, "resources/models/head_blender.ply", true, true);
+    // CEM YUKSEL MODELS
+    {
+        std::thread loadThread1(loaders::load_PLY, m_head, "resources/models/woman.ply", true, true, false);
+        loadThread1.detach();
+        m_head->set_rotation({180.0f, -90.0f, 0.0f});
+        std::thread loadThread2(loaders::load_cy_hair, m_hair, "resources/models/natural.hair");
+        loadThread2.detach();
+        m_hair->set_scale(0.054f);
+        m_hair->set_position({0.00f, -0.09f, 0.2f});
+        m_hair->set_rotation({-90.0f, 0.0f, 16.7f});
+    }
 
-    m_hair->generate_buffers();
-    m_head->generate_buffers();
+    // NEURAL HAIRCUT MODELS
+    {
+        // std::thread loadThread1(loaders::load_neural_hair, m_hair, "resources/models/hair_blender.ply", true, true, false);
+        // loadThread1.detach();
+        // std::thread loadThread2(loaders::load_PLY, m_head, "resources/models/head_blender.ply", true, true, false);
+        // loadThread2.detach();
+    }
 
     glDisable(GL_CULL_FACE);
 }
@@ -42,11 +56,11 @@ void HairRenderer::draw()
     m_headShader->bind();
 
     m_headShader->set_mat4("u_viewProj", m_camera->get_projection() * m_camera->get_view());
-    m_headShader->set_mat4("u_modelView", m_camera->get_view() * m_hair->get_model_matrix());
-    m_headShader->set_mat4("u_model", m_hair->get_model_matrix());
+    m_headShader->set_mat4("u_modelView", m_camera->get_view() * m_head->get_model_matrix());
+    m_headShader->set_mat4("u_model", m_head->get_model_matrix());
     m_headShader->set_mat4("u_view", m_camera->get_view());
     m_light->cache_uniforms(m_headShader);
-    m_headShader->set_vec3("u_skinColor",m_headSettings.skinColor);
+    m_headShader->set_vec3("u_skinColor", m_headSettings.skinColor);
 
     m_head->draw();
 
@@ -69,7 +83,7 @@ void HairRenderer::setup_user_interface_frame()
 
     ImGui::NewFrame();
 
-    //ImGui::ShowDemoWindow(&m_globalSettings.showUI);
+    // ImGui::ShowDemoWindow(&m_globalSettings.showUI);
 
     ImGui::Begin("Settings", &m_globalSettings.showUI); // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
     ImGui::SeparatorText("Profiler");
@@ -82,16 +96,16 @@ void HairRenderer::setup_user_interface_frame()
     }
     ImGui::Separator();
     ImGui::SeparatorText("Hair Settings");
+    gui::draw_transform_widget(m_hair);
     ImGui::DragFloat("Strand thickness", &m_hairSettings.thickness, 0.001f, 0.001f, 0.05f);
     ImGui::Separator();
-    ImGui::SeparatorText("Lighting Settings");
-    gui::draw_transform_properties(m_light);
-      ImGui::Separator();
     ImGui::SeparatorText("Head Settings");
-    
-    ImGui::ColorEdit3("Skin color",(float*)&m_headSettings.skinColor);
+    gui::draw_transform_widget(m_head);
+    ImGui::ColorEdit3("Skin color", (float *)&m_headSettings.skinColor);
     ImGui::Separator();
     ImGui::SeparatorText("Lighting Settings");
+    gui::draw_transform_widget(m_light);
+    ImGui::Separator();
 
     ImGui::End();
 

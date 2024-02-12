@@ -99,7 +99,7 @@ namespace glib
 
         virtual void set_rotation(const glm::vec3 p)
         {
-            m_transform.rotation = p;
+            m_transform.rotation = glm::radians(p);
 
             // Update forward
             glm::vec3 direction;
@@ -115,7 +115,7 @@ namespace glib
             m_isDirty = true;
         }
 
-        virtual inline glm::vec3 get_rotation() const { return m_transform.rotation; };
+        virtual inline glm::vec3 get_rotation() const { return glm::degrees(m_transform.rotation); };
 
         virtual void set_scale(const glm::vec3 s)
         {

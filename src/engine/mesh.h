@@ -42,6 +42,8 @@ namespace glib
         Geometry m_geometry;
         bool m_indexed;
 
+        bool m_geometry_loaded{false};
+        bool m_buffer_loaded{false};
         static int INSTANCED_MESHES;
 
     public:
@@ -49,12 +51,13 @@ namespace glib
 
         inline unsigned int get_buffer_id() const { return m_vao; }
         inline bool is_indexed() const { return m_indexed; }
+        inline bool is_buffer_loaded() const { return m_buffer_loaded; }
 
         void set_geometry(Geometry &g);
 
         virtual void generate_buffers();
 
-        virtual void draw(GLenum drawingPrimitive = GL_TRIANGLES) const;
+        virtual void draw(GLenum drawingPrimitive = GL_TRIANGLES);
 
         inline static int get_number_of_instances() { return INSTANCED_MESHES; }
     };

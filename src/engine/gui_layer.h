@@ -11,12 +11,12 @@ namespace glib
 
     namespace gui
     {
-        void draw_transform_properties(Object3D *obj);
-        void draw_light_properties(Light *l);
-        void draw_point_light_properties(PointLight *l);
-        void draw_directional_light_properties(PointLight *l);
-        void draw_mesh_properties(Mesh *m);
-        void draw_camera_properties(Camera *cam);
+        void draw_transform_widget(Object3D *obj);
+        void draw_light_widget(Light *l);
+        void draw_point_light_widget(PointLight *l);
+        void draw_directional_light_widget(PointLight *l);
+        void draw_mesh_widget(Mesh *m);
+        void draw_camera_widget(Camera *cam);
     }
 }
 #endif

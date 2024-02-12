@@ -3,8 +3,9 @@
 namespace glib
 {
 
-    void gui::draw_transform_properties(Object3D *obj)
+    void gui::draw_transform_widget(Object3D *obj)
     {
+        ImGui::PushID(obj);
         ImGui::Spacing();
         ImGui::SeparatorText("Transform");
 
@@ -13,16 +14,20 @@ namespace glib
         float position[3] = {obj->get_position().x,
                              obj->get_position().y,
                              obj->get_position().z};
+
+        // std::string posTag = "Position"+std::to_string(obj->get_name());
         if (ImGui::DragFloat3("Position", position, 0.1f))
         {
             obj->set_position(glm::vec3(position[0], position[1], position[2]));
         };
-        float rotation[3] = {(obj->get_rotation().x * 180) / PI,
-                             (obj->get_rotation().y * 180) / PI,
-                             (obj->get_rotation().z * 180) / PI};
+        float rotation[3] = {obj->get_rotation().x,
+                             obj->get_rotation().y,
+                             obj->get_rotation().z};
         if (ImGui::DragFloat3("Rotation", rotation, 0.1f))
         {
-            obj->set_rotation(glm::vec3((rotation[0] * PI) / 180, (rotation[1] * PI) / 180, (rotation[2] * PI) / 180));
+            obj->set_rotation(glm::vec3(rotation[0] ,
+                                        rotation[1] ,
+                                        rotation[2] ));
         };
         float scale[3] = {obj->get_scale().x,
                           obj->get_scale().y,
@@ -34,9 +39,10 @@ namespace glib
 
         ImGui::Spacing();
         ImGui::Separator();
+        ImGui::PopID();
     }
 
-    void gui::draw_light_properties(Light *l)
+    void gui::draw_light_widget(Light *l)
     {
         ImGui::Spacing();
         ImGui::SeparatorText("Light");
@@ -61,19 +67,19 @@ namespace glib
         ImGui::Separator();
     }
 
-    void gui::draw_point_light_properties(PointLight *l)
+    void gui::draw_point_light_widget(PointLight *l)
     {
     }
 
-    void gui::draw_directional_light_properties(PointLight *l)
+    void gui::draw_directional_light_widget(PointLight *l)
     {
     }
 
-    void gui::draw_mesh_properties(Mesh *m)
+    void gui::draw_mesh_widget(Mesh *m)
     {
     }
 
-    void gui::draw_camera_properties(Camera *cam)
+    void gui::draw_camera_widget(Camera *cam)
     {
         ImGui::Spacing();
         ImGui::SeparatorText("Camera");

@@ -13,6 +13,7 @@ struct UserInterfaceSettings
 struct HairSettings
 {
     float thickness = 0.005f;
+    
 };
 struct HeadSettings{
 

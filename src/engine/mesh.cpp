@@ -8,9 +8,12 @@ namespace glib
     void Mesh::set_geometry(Geometry &g)
     {
         m_geometry = g;
+        m_geometry_loaded = true;
     }
     void Mesh::generate_buffers()
     {
+        if(!m_geometry_loaded) return;
+
         GL_CHECK(glGenVertexArrays(1, &m_vao));
 
         size_t vertexSize = sizeof(Vertex);
@@ -57,20 +60,27 @@ namespace glib
         }
 
         GL_CHECK(glBindVertexArray(0));
+        m_buffer_loaded = true;
     }
 
-    void Mesh::draw(GLenum drawingPrimitive) const
+    void Mesh::draw(GLenum drawingPrimitive)
     {
-        GL_CHECK(glBindVertexArray(m_vao));
-
-        if (m_indexed == true)
+        if (m_enabled && m_buffer_loaded)
         {
-            GL_CHECK(glDrawElements(drawingPrimitive, m_geometry.indices.size(), GL_UNSIGNED_INT, (void *)0));
+            GL_CHECK(glBindVertexArray(m_vao));
+
+            if (m_indexed == true)
+            {
+                GL_CHECK(glDrawElements(drawingPrimitive, m_geometry.indices.size(), GL_UNSIGNED_INT, (void *)0));
+            }
+            else
+            {
+
+                GL_CHECK(glDrawArrays(drawingPrimitive, 0, m_geometry.vertices.size()));
+            }
         }
         else
-        {
-
-            GL_CHECK(glDrawArrays(drawingPrimitive, 0, m_geometry.vertices.size()));
-        }
+            generate_buffers();
     }
+
 }

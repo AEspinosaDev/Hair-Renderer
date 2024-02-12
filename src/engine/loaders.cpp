@@ -5,7 +5,7 @@
 namespace glib
 {
 
-    bool loaders::load_OBJ(Mesh *const mesh, bool overrideGeometry, const char *fileName, bool importMaterials, bool calculateTangents)
+    void loaders::load_OBJ(Mesh *const mesh, const char *fileName, bool importMaterials, bool calculateTangents)
     {
         // Preparing output
         tinyobj::attrib_t attrib;
@@ -25,7 +25,7 @@ namespace glib
         {
             ERR_LOG(err);
             DEBUG_LOG("ERROR: Couldn't load mesh");
-            return false;
+            return;
         }
 
         std::vector<Vertex> vertices;
@@ -61,21 +61,7 @@ namespace glib
                         vertex.normal.z = attrib.normals[3 * index.normal_index + 2];
                     }
 
-                    if (calculateTangents)
-                    {
-
-                        // vertex.tangent = utils::get_tangent_gram_smidt(vertex.position,
-                        //                                                vertices[indices[indices.size() - 2]].position,
-                        //                                                vertices[indices[indices.size() - 1]].position,
-                        //                                                vertex.uv,
-                        //                                                vertices[indices[indices.size() - 2]].uv,
-                        //                                                vertices[indices[indices.size() - 1]].uv,
-                        //                                                vertex.tangent);
-                    }
-                    else
-                    {
-                        vertex.tangent = {0.0, 0.0, 0.0};
-                    }
+                    vertex.tangent = {0.0, 0.0, 0.0};
 
                     // UV
                     if (index.texcoord_index >= 0)
@@ -116,20 +102,9 @@ namespace glib
                             vertex.normal.z = attrib.normals[3 * vertex_index + 2];
                         }
                         // Tangents
-                        if (calculateTangents)
-                        {
-                            // vertex.tangent = utils::get_tangent_gram_smidt(vertex.position,
-                            //                                                vertices[indices[indices.size() - 2]].position,
-                            //                                                vertices[indices[indices.size() - 1]].position,
-                            //                                                vertex.uv,
-                            //                                                vertices[indices[indices.size() - 2]].uv,
-                            //                                                vertices[indices[indices.size() - 1]].uv,
-                            //                                                vertex.tangent);
-                        }
-                        else
-                        {
-                            vertex.tangent = {0.0, 0.0, 0.0};
-                        }
+
+                        vertex.tangent = {0.0, 0.0, 0.0};
+
                         // UV
                         if (!attrib.texcoords.empty())
                         {
@@ -155,10 +130,9 @@ namespace glib
 
             shape_id++;
         }
-        return true;
     }
 
-    bool loaders::load_PLY(Mesh *const mesh, bool overrideGeometry, const char *fileName, bool preload, bool verbose, bool calculateTangents)
+    void loaders::load_PLY(Mesh *const mesh, const char *fileName, bool preload, bool verbose, bool calculateTangents)
     {
 
         std::unique_ptr<std::istream> file_stream;
@@ -313,7 +287,9 @@ namespace glib
             }
 
             std::vector<Vertex> vertices;
+            vertices.reserve(positions->count);
             std::vector<unsigned int> indices;
+            indices.reserve(faces->count * 3);
 
             if (positions)
             {
@@ -355,17 +331,15 @@ namespace glib
             g.indices = indices;
             mesh->set_geometry(g);
 
-            return true;
+            return;
         }
         catch (const std::exception &e)
         {
             std::cerr << "Caught tinyply exception: " << e.what() << std::endl;
         }
-
-        return false;
     }
 
-    bool loaders::load_NeuralHair(Mesh *const mesh, bool overrideGeometry, const char *fileName, bool preload, bool verbose, bool calculateTangents)
+    void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, bool preload, bool verbose, bool calculateTangents)
     {
         std::unique_ptr<std::istream> file_stream;
         std::vector<uint8_t> byte_buffer;
@@ -431,13 +405,13 @@ namespace glib
                 if (verbose)
                     std::cerr << "tinyply exception: " << e.what() << std::endl;
             }
+            utils::ManualTimer readTimer;
+            readTimer.start();
+            file.read(*file_stream);
+            readTimer.stop();
 
             if (verbose)
             {
-                utils::ManualTimer readTimer;
-                readTimer.start();
-                file.read(*file_stream);
-                readTimer.stop();
                 const float parsingTime = static_cast<float>(readTimer.get()) / 1000.f;
                 std::cout << "\tparsing " << size_mb << "mb in " << parsingTime << " seconds [" << (size_mb / parsingTime) << " MBps]" << std::endl;
                 if (positions)
@@ -447,6 +421,7 @@ namespace glib
             }
 
             std::vector<Vertex> vertices;
+            vertices.reserve(positions->count);
             std::vector<unsigned int> indices;
             std::vector<unsigned int> rootsIndices;
 
@@ -493,75 +468,289 @@ namespace glib
                 }
             }
 
-            std::vector<std::vector<unsigned int>> neighbours;
-            neighbours.resize(rootsIndices.size());
-            float radius = 0.02f;
-
-            // Neighbour adjacency list;
-            for (size_t i = 0; i < rootsIndices.size(); i++)
-            {
-                // vertices[rootsIndices[i]].color = {1.0f,0.0f,0.f};
-                for (size_t j = 0; j < rootsIndices.size(); j++)
-                {
-                    if (i == j)
-                        continue;
-                    if (glm::distance(vertices[rootsIndices[i]].position, vertices[rootsIndices[j]].position) <= radius)
-                    {
-                        neighbours[i].push_back(rootsIndices[j]);
-                    }
-                }
-            }
-            std::random_device rd;  // obtain a random number from hardware
-            std::mt19937 gen(rd()); // seed the generator
-            // Recorres los vecinos de cada root.
-
-            int lastIndex = indices.back();
-            for (size_t i = 0; i < neighbours.size(); i++)
-            {
-                for (size_t j = 0; j < neighbours[i].size(); j++)
-                {
-                    // Por cada vecino ocn el root, trazas el vector que los une
-                    glm::vec3 dir = vertices[neighbours[i][j]].position - vertices[rootsIndices[i]].position;
-                    float offset = ((float)rand()) / RAND_MAX;
-                    // Y anañades un nuevo punto e indice en la direccion unitaria que los une multiplicado por un factor aleatorio
-                    glm::vec3 newPos = vertices[rootsIndices[i]].position + dir * offset;
-                    // y luego multiplicado por el vetor perpendicular a la direccion
-                    // Una vez tienes el nuevo root, lo construyes
-                    // vertices.push_back({newPos+dir*offset, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}});
-                    lastIndex++;
-                    // indices.push_back(lastIndex);
-                    for (size_t k = 0; k < 90; k += 2)
-                    {
-                        vertices.push_back({vertices[rootsIndices[i]+k].position + dir * offset, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}});
-
-
-                        indices.push_back(lastIndex);
-                        newPos = vertices[rootsIndices[i] + k].position + dir * offset;
-                        vertices.push_back({newPos, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}});
-                        lastIndex++;
-                        indices.push_back(lastIndex);
-                    }
-                }
-            }
-
-            // La posicion del vertice i del root es igual a la interpolada de los vertices i de los vecinos
-            // Asi hasta que se acaben.
-            // Para controlar que no interpole entre direcciones del pelo muy distintas, si la tangente de alguno de los vertices i de los vecinos forma un angulo mayor
-            // de 90 el peso de ese vertice es 0,
-            // Haces esto por cada vecino.
-
             Geometry g;
             g.vertices = vertices;
             g.indices = indices;
+            augment_strands_density(g, rootsIndices);
             mesh->set_geometry(g);
 
-            return true;
+            return;
         }
         catch (const std::exception &e)
         {
             std::cerr << "Caught tinyply exception: " << e.what() << std::endl;
         }
+    }
+    void loaders::augment_strands_density(Geometry &geom, std::vector<unsigned int> &roots, const int kNeighbours, const int strandsPerNeighbourhood)
+    {
+        struct Root
+        {
+            unsigned int id;
+            float dist;
+        };
+        struct Neighbourhood
+        {
+            std::vector<unsigned int> ids;
+            float meanDist;
+        };
 
-        return false;
+        // According strands are the same length.
+        // Neural haircut asures it
+        const unsigned int ROOT_LENGTH = roots[1] - roots[0] - 1;
+
+        std::vector<Neighbourhood> nearestNeighbours;
+        nearestNeighbours.resize(roots.size());
+        float min = std::numeric_limits<float>::max();
+        float totalDistPerHood = 0.0f;
+
+        // Neighbour adjacency list;
+        for (size_t i = 0; i < roots.size(); i++)
+        {
+            std::vector<Root> rootsByDist;
+            for (size_t j = 0; j < roots.size(); j++)
+            {
+                if (i != j)
+                {
+                    float dist = glm::distance(geom.vertices[roots[i]].position, geom.vertices[roots[j]].position);
+                    Root r{roots[j], dist};
+                    rootsByDist.push_back(r);
+                }
+            }
+
+            std::sort(rootsByDist.begin(), rootsByDist.end(), [](const Root &a, const Root &b)
+                      { return a.dist < b.dist; });
+
+            float totalDist = 0.0f;
+            int count = 0;
+            for (auto it = rootsByDist.begin(); it != rootsByDist.end() && count < kNeighbours; ++it, ++count)
+            {
+                Root r = *it;
+                totalDist += r.dist;
+                nearestNeighbours[i].ids.push_back(r.id);
+            }
+            nearestNeighbours[i].meanDist = totalDist / kNeighbours;
+            totalDistPerHood += nearestNeighbours[i].meanDist;
+        }
+
+        float meanDistPerHood = totalDistPerHood / roots.size();
+        float typicalDeviation = 0.0f;
+
+        for (size_t i = 0; i < nearestNeighbours.size(); i++)
+        {
+            float deviation = nearestNeighbours[i].meanDist - meanDistPerHood;
+            // int const HOOD_STRANDS = strandsPerNeighbourhood * -(1/(1+exp(-TDeviation)));
+            // int HOOD_STRANDS = strandsPerNeighbourhood;
+            int const HOOD_STRANDS = strandsPerNeighbourhood * nearestNeighbours[i].meanDist / meanDistPerHood;
+
+            for (size_t s = 0; s < HOOD_STRANDS; s++)
+            {
+
+                std::vector<float> weights;
+                weights.reserve(kNeighbours);
+                float totalWeight = 0;
+
+                // RANDON WEIGHT PER NEIGHBOUR
+                for (size_t j = 0; j < kNeighbours; j++)
+                {
+                    float w = ((float)rand()) / RAND_MAX;
+                    weights.push_back(w);
+                    totalWeight += w;
+                }
+
+                // CHOOSE RANDOM COLOR FOR DEBUG
+                glm::vec3 color = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
+                unsigned int currentIndex = geom.indices.back() + 1;
+
+                // GROW NEW STRAND
+                for (size_t j = 0; j < ROOT_LENGTH; j++)
+                {
+                    // Mean of strands direction
+                    // float totalOrientation = 0.0f;
+                    // for (size_t k = 0; k < kNeighbours; k++)
+                    // {
+                    //     totalOrientation += glm::dot(geom.vertices[nearestNeighbours[i].ids[k] + j].tangent, geom.vertices[roots[i]].tangent);
+                    // }
+                    // float orientationMean = totalOrientation / kNeighbours;
+                    // Deviation, if deviation higher than treshold, weight 0
+                    // totalWeight = 0.0f;
+                    // for (size_t k = 0; k < kNeighbours; k++)
+                    // {
+                    //     if (glm::dot(geom.vertices[nearestNeighbours[i].ids[k] + j].tangent, geom.vertices[roots[i]].tangent) <= 0.0f)
+                    //         weights[k] = 0.0f;
+                    //     totalWeight += weights[k];
+                    // }
+
+                    glm::vec3 totalPos = glm::vec3(0.0f);
+                    for (size_t k = 0; k < kNeighbours; k++)
+                    {
+                        totalPos += geom.vertices[nearestNeighbours[i].ids[k] + j].position * weights[k];
+                    }
+
+                    glm::vec3 newPos = totalPos / totalWeight;
+
+                    geom.vertices.push_back({newPos, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, color});
+                    if (j < ROOT_LENGTH - 1)
+                    {
+                        geom.indices.push_back(currentIndex);
+                        geom.indices.push_back(currentIndex + 1);
+                        currentIndex++;
+                    }
+                }
+            }
+        }
+    }
+    void loaders::load_cy_hair(Mesh *const mesh, const char *fileName)
+    {
+
+#define HAIR_FILE_SEGMENTS_BIT 1
+#define HAIR_FILE_POINTS_BIT 2
+#define HAIR_FILE_THICKNESS_BIT 4
+#define HAIR_FILE_TRANSPARENCY_BIT 8
+#define HAIR_FILE_COLORS_BIT 16
+#define HAIR_FILE_INFO_SIZE 88
+
+        unsigned short *segments;
+        float *points;
+        float *thickness;
+        float *transparency;
+        float *colors;
+
+        struct Header
+        {
+            char signature[4];        //!< This should be "HAIR"
+            unsigned int hair_count;  //!< number of hair strands
+            unsigned int point_count; //!< total number of points of all strands
+            unsigned int arrays;      //!< bit array of data in the file
+
+            unsigned int d_segments; //!< default number of segments of each strand
+            float d_thickness;       //!< default thickness of hair strands
+            float d_transparency;    //!< default transparency of hair strands
+            float d_color[3];        //!< default color of hair strands
+
+            char info[HAIR_FILE_INFO_SIZE]; //!< information about the file
+        };
+
+        Header header;
+
+        header.signature[0] = 'H';
+        header.signature[1] = 'A';
+        header.signature[2] = 'I';
+        header.signature[3] = 'R';
+        header.hair_count = 0;
+        header.point_count = 0;
+        header.arrays = 0; // no arrays
+        header.d_segments = 0;
+        header.d_thickness = 1.0f;
+        header.d_transparency = 0.0f;
+        header.d_color[0] = 1.0f;
+        header.d_color[1] = 1.0f;
+        header.d_color[2] = 1.0f;
+        memset(header.info, '\0', HAIR_FILE_INFO_SIZE);
+
+        FILE *fp;
+        fp = fopen(fileName, "rb");
+        if (fp == nullptr)
+            return;
+
+        // read the header
+        size_t headread = fread(&header, sizeof(Header), 1, fp);
+
+        // Check if header is correctly read
+        if (headread < 1)
+            return;
+
+        // Check if this is a hair file
+        if (strncmp(header.signature, "HAIR", 4) != 0)
+            return;
+
+        // Read segments array
+        if (header.arrays & HAIR_FILE_SEGMENTS_BIT)
+        {
+            segments = new unsigned short[header.hair_count];
+            size_t readcount = fread(segments, sizeof(unsigned short), header.hair_count, fp);
+            if (readcount < header.hair_count)
+            {
+                std::cerr << "Error reading segments" << std::endl;
+                return;
+            }
+        }
+
+        // Read points array
+        if (header.arrays & HAIR_FILE_POINTS_BIT)
+        {
+            points = new float[header.point_count * 3];
+            size_t readcount = fread(points, sizeof(float), header.point_count * 3, fp);
+            if (readcount < header.point_count * 3)
+            {
+                std::cerr << "Error reading points" << std::endl;
+                return;
+            }
+        }
+
+        // Read thickness array
+        if (header.arrays & HAIR_FILE_THICKNESS_BIT)
+        {
+            thickness = new float[header.point_count];
+            size_t readcount = fread(thickness, sizeof(float), header.point_count, fp);
+            if (readcount < header.point_count)
+            {
+                std::cerr << "Error reading thickness" << std::endl;
+                return;
+            }
+        }
+
+        // Read thickness array
+        if (header.arrays & HAIR_FILE_TRANSPARENCY_BIT)
+        {
+            transparency = new float[header.point_count];
+            size_t readcount = fread(transparency, sizeof(float), header.point_count, fp);
+            if (readcount < header.point_count)
+            {
+                std::cerr << "Error reading alpha" << std::endl;
+                return;
+            }
+        }
+
+        // Read colors array
+        if (header.arrays & HAIR_FILE_COLORS_BIT)
+        {
+            colors = new float[header.point_count * 3];
+            size_t readcount = fread(colors, sizeof(float), header.point_count * 3, fp);
+            if (readcount < header.point_count * 3)
+            {
+                std::cerr << "Error reading colors" << std::endl;
+                return;
+            }
+        }
+
+        fclose(fp);
+
+        std::vector<Vertex> vertices;
+        vertices.reserve(header.point_count * 3);
+        std::vector<unsigned int> indices;
+
+        size_t index = 0;
+        size_t pointId = 0;
+        for (size_t hair = 0; hair < header.hair_count; hair++)
+        {
+            glm::vec3 color = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
+            size_t max_segments = segments ? segments[hair] : header.d_segments;
+            for (size_t i = 0; i < max_segments; i++)
+            {
+                vertices.push_back({{points[pointId], points[pointId + 1], points[pointId + 2]}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, color});
+                indices.push_back(index);
+                indices.push_back(index + 1);
+                index++;
+                pointId += 3;
+            }
+            vertices.push_back({{points[pointId], points[pointId + 1], points[pointId + 2]}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, color});
+            pointId += 3;
+            index++;
+        }
+
+        Geometry g;
+        g.vertices = vertices;
+        g.indices = indices;
+        mesh->set_geometry(g);
     }
 }

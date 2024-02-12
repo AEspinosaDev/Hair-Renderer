@@ -3,6 +3,7 @@
 
 #include <filesystem>
 #include <unistd.h>
+#include <thread>
 #include "engine/shader.h"
 #include "engine/mesh.h"
 #include "engine/loaders.h"
