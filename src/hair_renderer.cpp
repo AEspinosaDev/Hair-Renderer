@@ -7,12 +7,12 @@ void HairRenderer::init()
 
     chdir("/home/tony/Dev/OpenGL-Hair/");
 
-    m_camera = new Camera(m_window.extent.width, m_window.extent.height);
+    m_camera = new Camera(m_window.extent.width, m_window.extent.height,{0.0f,0.0f,-10.0f});
 
     m_controller = new Controller(m_camera);
 
     m_hairShader = new Shader("resources/shaders/test.glsl", ShaderType::LIT);
-    m_headShader = new Shader("resources/shaders/phong.glsl", ShaderType::LIT);
+    m_headShader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
 
     m_light = new PointLight();
     m_light->set_position({5.0f, 3.0f, -7.0f});
@@ -28,7 +28,7 @@ void HairRenderer::init()
         std::thread loadThread2(loaders::load_cy_hair, m_hair, "resources/models/natural.hair");
         loadThread2.detach();
         m_hair->set_scale(0.054f);
-        m_hair->set_position({0.00f, -0.09f, 0.2f});
+        m_hair->set_position({0.015f, -0.09f, 0.2f});
         m_hair->set_rotation({-90.0f, 0.0f, 16.7f});
     }
 

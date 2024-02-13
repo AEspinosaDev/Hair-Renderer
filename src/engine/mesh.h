@@ -6,62 +6,62 @@
 #include "object3D.h"
 #include "utils.h"
 
-namespace glib
+GLIB_NAMESPACE_BEGIN
+
+struct Vertex
 {
+    glm::vec3 position;
+    glm::vec3 normal;
+    glm::vec3 tangent;
+    glm::vec2 uv;
+    glm::vec3 color;
 
-    struct Vertex
+    bool operator==(const Vertex &other) const
     {
-        glm::vec3 position;
-        glm::vec3 normal;
-        glm::vec3 tangent;
-        glm::vec2 uv;
-        glm::vec3 color;
+        return position == other.position && normal == other.normal && tangent == other.tangent && uv == other.uv && color == other.color;
+    }
 
-        bool operator==(const Vertex &other) const
-        {
-            return position == other.position && normal == other.normal && tangent == other.tangent && uv == other.uv && color == other.color;
-        }
-
-        bool operator!=(const Vertex &other) const
-        {
-            return !(*this == other);
-        }
-    };
-
-    struct Geometry
+    bool operator!=(const Vertex &other) const
     {
-        size_t triangles;
-        std::vector<Vertex> vertices;
-        std::vector<unsigned int> indices;
-    };
+        return !(*this == other);
+    }
+};
 
-    class Mesh : public Object3D
-    {
-    protected:
-        unsigned int m_vao;
-        Geometry m_geometry;
-        bool m_indexed;
+struct Geometry
+{
+    size_t triangles;
+    std::vector<Vertex> vertices;
+    std::vector<unsigned int> indices;
+};
 
-        bool m_geometry_loaded{false};
-        bool m_buffer_loaded{false};
-        static int INSTANCED_MESHES;
+class Mesh : public Object3D
+{
+protected:
+    unsigned int m_vao;
+    Geometry m_geometry;
+    bool m_indexed;
 
-    public:
-        Mesh() : Object3D("Mesh", {0.0f, 0.0f, 0.0f}, Object3DType::MESH) { Mesh::INSTANCED_MESHES++; }
+    bool m_geometry_loaded{false};
+    bool m_buffer_loaded{false};
+    static int INSTANCED_MESHES;
 
-        inline unsigned int get_buffer_id() const { return m_vao; }
-        inline bool is_indexed() const { return m_indexed; }
-        inline bool is_buffer_loaded() const { return m_buffer_loaded; }
+public:
+    Mesh() : Object3D("Mesh", {0.0f, 0.0f, 0.0f}, Object3DType::MESH) { Mesh::INSTANCED_MESHES++; }
 
-        void set_geometry(Geometry &g);
+    inline unsigned int get_buffer_id() const { return m_vao; }
+    inline bool is_indexed() const { return m_indexed; }
+    inline bool is_buffer_loaded() const { return m_buffer_loaded; }
 
-        virtual void generate_buffers();
+    void set_geometry(Geometry &g);
 
-        virtual void draw(GLenum drawingPrimitive = GL_TRIANGLES);
+    virtual void generate_buffers();
 
-        inline static int get_number_of_instances() { return INSTANCED_MESHES; }
-    };
-}
+    virtual void draw(GLenum drawingPrimitive = GL_TRIANGLES);
+
+    inline static int get_number_of_instances() { return INSTANCED_MESHES; }
+};
+GLIB_NAMESPACE_END
+
 namespace std
 {
     template <>

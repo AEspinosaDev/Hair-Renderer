@@ -34,9 +34,47 @@
 	}
 #define GLFW_CHECK() GLFW_check_error();
 
+#define GLIB_NAMESPACE_BEGIN \
+	namespace glib           \
+	{
+#define GLIB_NAMESPACE_END }
+#define USING_NAMESPACE_GLIB using namespace glib;
+
 void GLFW_check_error();
 void GLclearError();
 bool GLlogCall(const char *function, const char *file, int line);
 
+typedef enum DepthFuncType
+{
+	NEVER = GL_NEVER,
+	LESS = GL_LESS,
+	GREATER = GL_GREATER,
+	EQUAL = GL_EQUAL,
+	ALWAYS = GL_ALWAYS,
+	LEQUAL = GL_LEQUAL,
+	GEQUAL = GL_GEQUAL,
+	NOTEQUAL = GL_NOTEQUAL
+} DepthFuncType;
+
+typedef enum BlendFuncType
+{
+	ZERO = GL_ZERO,
+	ONE = GL_ONE,
+	SRC_CLR = GL_SRC_COLOR,
+	ONE_MINUS_SRC_CLR = GL_ONE_MINUS_SRC_COLOR,
+	DST_CLR = GL_DST_COLOR,
+	ONE_MINUS_DST_CLR = GL_ONE_MINUS_DST_COLOR,
+	SRC_ALPHA = GL_SRC_ALPHA,
+	ONE_MINUS_SRC_A = GL_ONE_MINUS_SRC_ALPHA
+} BlendFuncType;
+
+typedef enum BlendOperationType
+{
+	ADD = GL_FUNC_ADD,
+	SUBSTRACT = GL_FUNC_SUBTRACT,
+	REV_SUBSTRACT = GL_FUNC_REVERSE_SUBTRACT,
+	MIN = GL_MIN,
+	MAX = GL_MAX,
+} BlendOperationType;
 
 #endif

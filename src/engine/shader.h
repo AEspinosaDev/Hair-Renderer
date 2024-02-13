@@ -6,57 +6,56 @@
 #include <fstream>
 #include "core.h"
 
-namespace glib
+GLIB_NAMESPACE_BEGIN
+
+enum ShaderType
 {
+    LIT,
+    UNLIT
+};
 
-    enum ShaderType
-    {
-        LIT,
-        UNLIT
-    };
+struct ShaderStageSource
+{
+    std::string vertexBit;
+    std::string fragmentBit;
+    std::string geometryBit;
+    std::string tesselationBit;
+    std::string tesselation__Bit;
+};
 
-    struct ShaderStageSource
-    {
-        std::string vertexBit;
-        std::string fragmentBit;
-        std::string geometryBit;
-        std::string tesselationBit;
-        std::string tesselation__Bit;
-    };
+class Shader
+{
+protected:
+    unsigned int m_ID; // PROGRAM ID
+    ShaderType m_type;
+    std::unordered_map<const char *, int> m_uniformLocationCache;
 
-    class Shader
-    {
-    protected:
-        unsigned int m_ID; // PROGRAM ID
-        ShaderType m_type;
-        std::unordered_map<const char *, int> m_uniformLocationCache;
+public:
+    Shader(const char *filename, ShaderType t);
 
-    public:
-        Shader(const char *filename, ShaderType t);
+    Shader(ShaderStageSource src, ShaderType t);
 
-        Shader(ShaderStageSource src, ShaderType t);
+    ~Shader() {}
 
-        ~Shader() {}
+    void bind() const;
 
-        void bind() const;
+    void unbind() const;
 
-        void unbind() const;
-
-        inline ShaderType get_type() { return m_type; }
+    inline ShaderType get_type() { return m_type; }
 
 #pragma region single_uniform_pipeline
 
-        void set_bool(const char *name, bool value) const;
+    void set_bool(const char *name, bool value) const;
 
-        void set_int(const char *name, int value) const;
+    void set_int(const char *name, int value) const;
 
-        void set_float(const char *name, float value);
+    void set_float(const char *name, float value);
 
-        void set_mat4(const char *name, glm::mat4 value);
+    void set_mat4(const char *name, glm::mat4 value);
 
-        void set_vec3(const char *name, glm::vec3 value);
+    void set_vec3(const char *name, glm::vec3 value);
 
-        void set_vec4(const char *name, glm::vec4 value);
+    void set_vec4(const char *name, glm::vec4 value);
 
 #pragma endregion
 
@@ -64,15 +63,15 @@ namespace glib
 
 #pragma endregion
 
-    private:
-        unsigned int get_uniform_location(const char *name);
+private:
+    unsigned int get_uniform_location(const char *name);
 
-        virtual unsigned int compile(unsigned int type, const char *source);
+    virtual unsigned int compile(unsigned int type, const char *source);
 
-        virtual unsigned int create_program(ShaderStageSource source);
+    virtual unsigned int create_program(ShaderStageSource source);
 
-        static ShaderStageSource parse_shader(const char *filename);
-    };
-}
+    static ShaderStageSource parse_shader(const char *filename);
+};
+GLIB_NAMESPACE_END
 
 #endif

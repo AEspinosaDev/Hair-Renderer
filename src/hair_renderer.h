@@ -14,7 +14,7 @@
 #include "engine/renderer.h"
 #include "settings.h"
 
-using namespace glib;
+USING_NAMESPACE_GLIB
 
 class HairRenderer : public Renderer
 {

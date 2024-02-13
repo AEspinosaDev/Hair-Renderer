@@ -17,7 +17,7 @@ struct HairSettings
 };
 struct HeadSettings{
 
-    glm::vec3 skinColor = glm::vec3(1.0f,0.65f,0.46f);
+    glm::vec3 skinColor = glm::vec3(0.84f,0.25f,0.125f);
 
 };
 struct GlobalSettings
