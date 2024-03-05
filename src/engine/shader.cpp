@@ -164,8 +164,8 @@ ShaderStageSource Shader::parse_shader(const char *filename)
         VERTEX = 0,
         FRAGMENT = 1,
         GEOMETRY = 2,
-        TESSELATION = 3,
-        TESSELATION_ = 4
+        TESSELATION_CTRL = 3,
+        TESSELATION_EVAL = 4
 
     };
 

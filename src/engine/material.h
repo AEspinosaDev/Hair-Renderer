@@ -22,7 +22,7 @@ struct PipelineState
 
 struct GraphicPipeline{
     Shader* shader;
-    PipelineState state;
+    PipelineState state{};
 };
 struct MaterialUniforms
 {
@@ -42,15 +42,23 @@ protected:
     // std::unordered_map<int,Texture* > m_textures;
 
 public:
-    Material(GraphicPipeline pipeline) : m_pipeline(pipeline) {}
-    Material(GraphicPipeline pipeline, MaterialUniforms uniforms) : m_pipeline(pipeline), m_uniforms(uniforms) {}
+    Material(GraphicPipeline& pipeline) : m_pipeline(pipeline) {}
+    Material(GraphicPipeline& pipeline, MaterialUniforms& uniforms) : m_pipeline(pipeline), m_uniforms(uniforms) {}
     // Material(Shader const *shader, MaterialUniforms uniforms, std::unordered_map<int, Texture *> textures) : m_shader(shader), m_uniforms(uniforms), m_textures(textures) {}
+
+    // virtual void set_texture(label, texture);
+    // virutal Texture* get_texture(label);
+
+    inline virtual void set_uniforms(MaterialUniforms& uniforms){ m_uniforms = uniforms;}
+    inline virtual MaterialUniforms get_uniforms() const { return m_uniforms;}
+
+    inline virtual void set_pipeline(GraphicPipeline& pipeline){ m_pipeline = pipeline;}
+    inline virtual GraphicPipeline get_pipeline() const { return m_pipeline;}
+
 
     virtual void upload_uniforms() const;
     virtual void setup_pipeline();
     virtual void bind_textures();
-    // virtual void set_texture(label, texture);
-    // virutal Texture* get_texture(label);
 
 };
 

@@ -338,8 +338,9 @@ void loaders::load_PLY(Mesh *const mesh, const char *fileName, bool preload, boo
     }
 }
 
-void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, bool preload, bool verbose, bool calculateTangents)
+void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *const skullMesh, bool preload, bool verbose, bool calculateTangents)
 {
+
     std::unique_ptr<std::istream> file_stream;
     std::vector<uint8_t> byte_buffer;
     std::string filePath = fileName;
@@ -467,10 +468,145 @@ void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, bool prel
             }
         }
 
+        auto samplePoint = [=](glm::vec2 sample2D, glm::vec3 a, glm::vec3 b, glm::vec3 c)
+        {
+            // Warp to triangle
+            float su0 = std::sqrt(sample2D.x);
+            glm::vec2 uv = glm::vec2(1 - su0, sample2D.y * su0);
+
+            // Get bary
+            glm::vec3 bary{1 - uv.length(), uv.x, uv.y};
+
+            // Compute global positon accurately
+            // using barycentric coordinates
+            glm::vec3 point = bary.x * a + bary.y * b + bary.z * c;
+
+            return point;
+        };
+
+        auto augmentDensity = [=](Geometry &geom, unsigned int totalStrands)
+        {
+            // Neural haircut asures it
+            const unsigned int STRAND_LENGTH = rootsIndices[1] - rootsIndices[0] - 1;
+            // Neighburs (should be user defined)
+            const unsigned int NEIGHBOURS = 3;
+
+            // Create a random number generator engine
+            std::random_device rd;
+            std::mt19937 gen(rd()); // Mersenne Twister PRNG
+            std::uniform_real_distribution<double> dis(0.0, 1.0);
+
+            std::vector<unsigned int> indices = skullMesh->get_geometry().indices;
+            std::vector<Vertex> vertices = skullMesh->get_geometry().vertices;
+
+            std::vector<float> areas;
+            float totalArea{0.0f};
+            areas.reserve(indices.size() / 3);
+            // std::cout << "total                                            " << indices.size() << std::endl;
+            // Compute total area
+            for (size_t i = 0; i < indices.size(); i += 3)
+            {
+                float area = 0.5f * glm::length(glm::cross(glm::vec3(vertices[i + 1].position - vertices[i].position), glm::vec3(vertices[i + 2].position - vertices[i].position)));
+                areas.push_back(area);
+                totalArea += area;
+                // std::cout << i << std::endl;
+            }
+
+            // Populate
+            size_t t = 0;
+            for (size_t i = 0; i < indices.size(); i += 3, t++)
+            {
+                // Uniformize number
+                float pdf = areas[t] / totalArea;
+                unsigned int strandsToGrow = totalStrands * pdf;
+                for (size_t s = 0; s < strandsToGrow; s++)
+                {
+
+                    // Get random value
+                    glm::vec2 sample2D = glm::vec2(dis(gen), dis(gen));
+                    glm::vec3 root = samplePoint(sample2D, vertices[i].position, vertices[i + 1].position, vertices[i + 2].position);
+
+                    struct Neighbour
+                    {
+                        unsigned int id;
+                        float dist;
+                    };
+
+                    // Check nearest neighbours
+                    std::vector<Neighbour> nearestNeighbours;
+
+                    // Neighbour adjacency list;
+                    std::vector<Neighbour> roots;
+                    roots.reserve(rootsIndices.size());
+                    for (size_t r = 0; r < rootsIndices.size(); r++)
+                    {
+                        float dist = glm::distance(geom.vertices[rootsIndices[r]].position, root);
+                        Neighbour potentialN{rootsIndices[r], dist};
+                        roots.push_back(potentialN);
+                    }
+
+                    std::sort(roots.begin(), roots.end(), [](const Neighbour &a, const Neighbour &b)
+                              { return a.dist < b.dist; });
+
+                    float totalDist = 0.0f;
+                    int count = 0;
+                    for (auto it = roots.begin(); it != roots.end() && count < NEIGHBOURS; ++it, ++count)
+                    {
+                        nearestNeighbours.push_back(*it);
+                    }
+
+                    // Compute neighbour weights
+                    std::vector<float> weights;
+                    weights.reserve(NEIGHBOURS);
+                    float totalWeight = 0;
+
+                    // RANDON WEIGHT PER NEIGHBOUR
+                    for (size_t nn = 0; nn < NEIGHBOURS; nn++)
+                    {
+                        float w = 1 / (nearestNeighbours[nn].dist * nearestNeighbours[nn].dist);
+                        weights.push_back(w);
+                        totalWeight += w;
+                    }
+                    //NORMALIZE WEIGHTS
+                    for (size_t w = 0; w < NEIGHBOURS; w++)
+                    {
+                       weights[w]= weights[w] / totalWeight;
+                    }
+    
+
+                    // CHOOSE RANDOM COLOR FOR DEBUG
+                    glm::vec3 color = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
+
+                    // GROW NEW STRAND
+                    unsigned int currentIndex = geom.indices.back() + 1;
+                    for (size_t p = 1; p < STRAND_LENGTH; p++)
+                    {
+                        glm::vec3 totalWeightedPos = glm::vec3(0.0f);
+                        for (size_t k = 0; k < NEIGHBOURS; k++)
+                        {
+                            totalWeightedPos += geom.vertices[nearestNeighbours[i].id + p].position * weights[k];
+                        }
+
+                        // glm::vec3 newPos = totalWeightedPos / totalWeight;
+                        glm::vec3 newPos = totalWeightedPos;
+
+                        geom.vertices.push_back({newPos, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, color});
+                        if (p < STRAND_LENGTH - 1)
+                        {
+                            geom.indices.push_back(currentIndex);
+                            geom.indices.push_back(currentIndex + 1);
+                            currentIndex++;
+                        }
+                    }
+                }
+                t++;
+            }
+        };
+
         Geometry g;
         g.vertices = vertices;
         g.indices = indices;
-        augment_strands_density(g, rootsIndices);
+        augmentDensity(g, 20000);
         mesh->set_geometry(g);
 
         return;
@@ -480,124 +616,7 @@ void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, bool prel
         std::cerr << "Caught tinyply exception: " << e.what() << std::endl;
     }
 }
-void loaders::augment_strands_density(Geometry &geom, std::vector<unsigned int> &roots, const int kNeighbours, const int strandsPerNeighbourhood)
-{
-    struct Root
-    {
-        unsigned int id;
-        float dist;
-    };
-    struct Neighbourhood
-    {
-        std::vector<unsigned int> ids;
-        float meanDist;
-    };
 
-    // According strands are the same length.
-    // Neural haircut asures it
-    const unsigned int ROOT_LENGTH = roots[1] - roots[0] - 1;
-
-    std::vector<Neighbourhood> nearestNeighbours;
-    nearestNeighbours.resize(roots.size());
-    float min = std::numeric_limits<float>::max();
-    float totalDistPerHood = 0.0f;
-
-    // Neighbour adjacency list;
-    for (size_t i = 0; i < roots.size(); i++)
-    {
-        std::vector<Root> rootsByDist;
-        for (size_t j = 0; j < roots.size(); j++)
-        {
-            if (i != j)
-            {
-                float dist = glm::distance(geom.vertices[roots[i]].position, geom.vertices[roots[j]].position);
-                Root r{roots[j], dist};
-                rootsByDist.push_back(r);
-            }
-        }
-
-        std::sort(rootsByDist.begin(), rootsByDist.end(), [](const Root &a, const Root &b)
-                  { return a.dist < b.dist; });
-
-        float totalDist = 0.0f;
-        int count = 0;
-        for (auto it = rootsByDist.begin(); it != rootsByDist.end() && count < kNeighbours; ++it, ++count)
-        {
-            Root r = *it;
-            totalDist += r.dist;
-            nearestNeighbours[i].ids.push_back(r.id);
-        }
-        nearestNeighbours[i].meanDist = totalDist / kNeighbours;
-        totalDistPerHood += nearestNeighbours[i].meanDist;
-    }
-
-    float meanDistPerHood = totalDistPerHood / roots.size();
-    float typicalDeviation = 0.0f;
-
-    for (size_t i = 0; i < nearestNeighbours.size(); i++)
-    {
-        float deviation = nearestNeighbours[i].meanDist - meanDistPerHood;
-        // int const HOOD_STRANDS = strandsPerNeighbourhood * -(1/(1+exp(-TDeviation)));
-        // int HOOD_STRANDS = strandsPerNeighbourhood;
-        int const HOOD_STRANDS = strandsPerNeighbourhood * nearestNeighbours[i].meanDist / meanDistPerHood;
-
-        for (size_t s = 0; s < HOOD_STRANDS; s++)
-        {
-
-            std::vector<float> weights;
-            weights.reserve(kNeighbours);
-            float totalWeight = 0;
-
-            // RANDON WEIGHT PER NEIGHBOUR
-            for (size_t j = 0; j < kNeighbours; j++)
-            {
-                float w = ((float)rand()) / RAND_MAX;
-                weights.push_back(w);
-                totalWeight += w;
-            }
-
-            // CHOOSE RANDOM COLOR FOR DEBUG
-            glm::vec3 color = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
-            unsigned int currentIndex = geom.indices.back() + 1;
-
-            // GROW NEW STRAND
-            for (size_t j = 0; j < ROOT_LENGTH; j++)
-            {
-                // Mean of strands direction
-                // float totalOrientation = 0.0f;
-                // for (size_t k = 0; k < kNeighbours; k++)
-                // {
-                //     totalOrientation += glm::dot(geom.vertices[nearestNeighbours[i].ids[k] + j].tangent, geom.vertices[roots[i]].tangent);
-                // }
-                // float orientationMean = totalOrientation / kNeighbours;
-                // Deviation, if deviation higher than treshold, weight 0
-                // totalWeight = 0.0f;
-                // for (size_t k = 0; k < kNeighbours; k++)
-                // {
-                //     if (glm::dot(geom.vertices[nearestNeighbours[i].ids[k] + j].tangent, geom.vertices[roots[i]].tangent) <= 0.0f)
-                //         weights[k] = 0.0f;
-                //     totalWeight += weights[k];
-                // }
-
-                glm::vec3 totalPos = glm::vec3(0.0f);
-                for (size_t k = 0; k < kNeighbours; k++)
-                {
-                    totalPos += geom.vertices[nearestNeighbours[i].ids[k] + j].position * weights[k];
-                }
-
-                glm::vec3 newPos = totalPos / totalWeight;
-
-                geom.vertices.push_back({newPos, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, color});
-                if (j < ROOT_LENGTH - 1)
-                {
-                    geom.indices.push_back(currentIndex);
-                    geom.indices.push_back(currentIndex + 1);
-                    currentIndex++;
-                }
-            }
-        }
-    }
-}
 void loaders::load_cy_hair(Mesh *const mesh, const char *fileName)
 {
 
@@ -610,6 +629,7 @@ void loaders::load_cy_hair(Mesh *const mesh, const char *fileName)
 
     unsigned short *segments;
     float *points;
+    float *dirs;
     float *thickness;
     float *transparency;
     float *colors;
@@ -724,6 +744,112 @@ void loaders::load_cy_hair(Mesh *const mesh, const char *fileName)
 
     fclose(fp);
 
+    auto computeDirection = [](float *d, float &d0len, float &d1len, float const *p0, float const *p1, float const *p2)
+    {
+        // line from p0 to p1
+        float d0[3];
+        d0[0] = p1[0] - p0[0];
+        d0[1] = p1[1] - p0[1];
+        d0[2] = p1[2] - p0[2];
+        float d0lensq = d0[0] * d0[0] + d0[1] * d0[1] + d0[2] * d0[2];
+        d0len = (d0lensq > 0) ? (float)sqrt(d0lensq) : 1.0f;
+
+        // line from p1 to p2
+        float d1[3];
+        d1[0] = p2[0] - p1[0];
+        d1[1] = p2[1] - p1[1];
+        d1[2] = p2[2] - p1[2];
+        float d1lensq = d1[0] * d1[0] + d1[1] * d1[1] + d1[2] * d1[2];
+        d1len = (d1lensq > 0) ? (float)sqrt(d1lensq) : 1.0f;
+
+        // make sure that d0 and d1 has the same length
+        d0[0] *= d1len / d0len;
+        d0[1] *= d1len / d0len;
+        d0[2] *= d1len / d0len;
+
+        // direction at p1
+        d[0] = d0[0] + d1[0];
+        d[1] = d0[1] + d1[1];
+        d[2] = d0[2] + d1[2];
+        float dlensq = d[0] * d[0] + d[1] * d[1] + d[2] * d[2];
+        float dlen = (dlensq > 0) ? (float)sqrt(dlensq) : 1.0f;
+        d[0] /= dlen;
+        d[1] /= dlen;
+        d[2] /= dlen;
+
+        // return d0len;
+    };
+
+    auto fillDirectionArray = [=](float *dir)
+    {
+        if (dir == nullptr || header.point_count <= 0 || points == nullptr)
+            return;
+
+        int p = 0; // point index
+        for (unsigned int i = 0; i < header.hair_count; i++)
+        {
+            int s = (segments) ? segments[i] : header.d_segments;
+            if (s > 1)
+            {
+                // direction at point1
+                float len0, len1;
+                computeDirection(&dir[(p + 1) * 3], len0, len1, &points[p * 3], &points[(p + 1) * 3], &points[(p + 2) * 3]);
+
+                // direction at point0
+                float d0[3];
+                d0[0] = points[(p + 1) * 3] - dir[(p + 1) * 3] * len0 * 0.3333f - points[p * 3];
+                d0[1] = points[(p + 1) * 3 + 1] - dir[(p + 1) * 3 + 1] * len0 * 0.3333f - points[p * 3 + 1];
+                d0[2] = points[(p + 1) * 3 + 2] - dir[(p + 1) * 3 + 2] * len0 * 0.3333f - points[p * 3 + 2];
+                float d0lensq = d0[0] * d0[0] + d0[1] * d0[1] + d0[2] * d0[2];
+                float d0len = (d0lensq > 0) ? (float)sqrt(d0lensq) : 1.0f;
+                dir[p * 3] = d0[0] / d0len;
+                dir[p * 3 + 1] = d0[1] / d0len;
+                dir[p * 3 + 2] = d0[2] / d0len;
+
+                // We computed the first 2 points
+                p += 2;
+
+                // Compute the direction for the rest
+                for (int t = 2; t < s; t++, p++)
+                {
+                    computeDirection(&dir[p * 3], len0, len1, &points[(p - 1) * 3], &points[p * 3], &points[(p + 1) * 3]);
+                }
+
+                // direction at the last point
+                d0[0] = -points[(p - 1) * 3] + dir[(p - 1) * 3] * len1 * 0.3333f + points[p * 3];
+                d0[1] = -points[(p - 1) * 3 + 1] + dir[(p - 1) * 3 + 1] * len1 * 0.3333f + points[p * 3 + 1];
+                d0[2] = -points[(p - 1) * 3 + 2] + dir[(p - 1) * 3 + 2] * len1 * 0.3333f + points[p * 3 + 2];
+                d0lensq = d0[0] * d0[0] + d0[1] * d0[1] + d0[2] * d0[2];
+                d0len = (d0lensq > 0) ? (float)sqrt(d0lensq) : 1.0f;
+                dir[p * 3] = d0[0] / d0len;
+                dir[p * 3 + 1] = d0[1] / d0len;
+                dir[p * 3 + 2] = d0[2] / d0len;
+                p++;
+            }
+            else if (s > 0)
+            {
+                // if it has a single segment
+                float d0[3];
+                d0[0] = points[(p + 1) * 3] - points[p * 3];
+                d0[1] = points[(p + 1) * 3 + 1] - points[p * 3 + 1];
+                d0[2] = points[(p + 1) * 3 + 2] - points[p * 3 + 2];
+                float d0lensq = d0[0] * d0[0] + d0[1] * d0[1] + d0[2] * d0[2];
+                float d0len = (d0lensq > 0) ? (float)sqrt(d0lensq) : 1.0f;
+                dir[p * 3] = d0[0] / d0len;
+                dir[p * 3 + 1] = d0[1] / d0len;
+                dir[p * 3 + 2] = d0[2] / d0len;
+                dir[(p + 1) * 3] = dir[p * 3];
+                dir[(p + 1) * 3 + 1] = dir[p * 3 + 1];
+                dir[(p + 1) * 3 + 2] = dir[p * 3 + 2];
+                p += 2;
+            }
+            //*/
+        }
+    };
+
+    dirs = new float[header.point_count * 3];
+    fillDirectionArray(dirs);
+
     std::vector<Vertex> vertices;
     vertices.reserve(header.point_count * 3);
     std::vector<unsigned int> indices;
@@ -736,13 +862,13 @@ void loaders::load_cy_hair(Mesh *const mesh, const char *fileName)
         size_t max_segments = segments ? segments[hair] : header.d_segments;
         for (size_t i = 0; i < max_segments; i++)
         {
-            vertices.push_back({{points[pointId], points[pointId + 1], points[pointId + 2]}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, color});
+            vertices.push_back({{points[pointId], points[pointId + 1], points[pointId + 2]}, {0.0f, 0.0f, 0.0f}, {dirs[pointId], dirs[pointId + 1], dirs[pointId + 2]}, {0.0f, 0.0f}, color});
             indices.push_back(index);
             indices.push_back(index + 1);
             index++;
             pointId += 3;
         }
-        vertices.push_back({{points[pointId], points[pointId + 1], points[pointId + 2]}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, color});
+        vertices.push_back({{points[pointId], points[pointId + 1], points[pointId + 2]}, {0.0f, 0.0f, 0.0f}, {dirs[pointId], dirs[pointId + 1], dirs[pointId + 2]}, {0.0f, 0.0f}, color});
         pointId += 3;
         index++;
     }
@@ -752,4 +878,5 @@ void loaders::load_cy_hair(Mesh *const mesh, const char *fileName)
     g.indices = indices;
     mesh->set_geometry(g);
 }
+
 GLIB_NAMESPACE_END

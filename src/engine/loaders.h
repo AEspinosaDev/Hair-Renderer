@@ -17,9 +17,7 @@ namespace loaders
 
     void load_PLY(Mesh *const mesh, const char *fileName, bool preload = true, bool verbose = false, bool calculateTangents = false);
 
-    void load_neural_hair(Mesh *const mesh, const char *fileName, bool preload = true, bool verbose = false, bool calculateTangents = false);
-
-    void augment_strands_density(Geometry &geom, std::vector<unsigned int> &roots, const int kNeighbours = 5, const int strandsPerNeighbourhood = 10);
+    void load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *const skullMesh, bool preload = true, bool verbose = false, bool calculateTangents = false);
 
     void load_cy_hair(Mesh *const mesh, const char *fileName);
 }

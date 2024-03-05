@@ -52,12 +52,10 @@ void Mesh::generate_buffers()
         GL_CHECK(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo));
         GL_CHECK(glBufferData(GL_ELEMENT_ARRAY_BUFFER, m_geometry.indices.size() * sizeof(m_geometry.indices[0]), m_geometry.indices.data(), GL_STATIC_DRAW));
 
-        m_indexed = true;
+        m_geometry.indexed = true;
     }
     else
-    {
-        m_indexed = false;
-    }
+        m_geometry.indexed = false;
 
     GL_CHECK(glBindVertexArray(0));
     m_buffer_loaded = true;
@@ -67,9 +65,16 @@ void Mesh::draw(GLenum drawingPrimitive)
 {
     if (m_enabled && m_buffer_loaded)
     {
+
+        if (m_material)
+        {
+            m_material->get_pipeline().shader->bind();
+            m_material->setup_pipeline();
+        }
+
         GL_CHECK(glBindVertexArray(m_vao));
 
-        if (m_indexed == true)
+        if (m_geometry.indexed == true)
         {
             GL_CHECK(glDrawElements(drawingPrimitive, m_geometry.indices.size(), GL_UNSIGNED_INT, (void *)0));
         }
@@ -77,6 +82,11 @@ void Mesh::draw(GLenum drawingPrimitive)
         {
 
             GL_CHECK(glDrawArrays(drawingPrimitive, 0, m_geometry.vertices.size()));
+        }
+
+        if (m_material)
+        {
+            m_material->get_pipeline().shader->unbind();
         }
     }
     else

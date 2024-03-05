@@ -3,6 +3,7 @@
 
 #include "shader.h"
 #include "object3D.h"
+#include "material.h"
 
 GLIB_NAMESPACE_BEGIN
 
@@ -42,7 +43,7 @@ protected:
 public:
     Light(const char *name, LightType type, glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f), float intensity = 1.0f) : Object3D(name, glm::vec3{0.0f}, LIGHT), m_color(color),
                                                                                                                      m_intensity(intensity), m_lighType(type) {}
-    virtual void cache_uniforms(Shader *shader) const = 0;
+    virtual void cache_uniforms(MaterialUniforms &u) const = 0;
 
     virtual inline glm::vec3 get_color() const { return m_color; }
     virtual inline void set_color(glm::vec3 c) { m_color = c; }
@@ -97,7 +98,7 @@ public:
     inline float get_decaying() const { return m_decaying; }
     inline void set_decaying(float d) { m_decaying = d; }
 
-    void cache_uniforms(Shader *shader) const;
+    void cache_uniforms(MaterialUniforms &u) const;
 
     inline static int get_number_of_instances() { return INSTANCED_POINT_LIGHTS; }
 };
@@ -116,7 +117,7 @@ public:
     inline glm::vec3 get_direction() const { return m_direction; }
     inline void set_direction(glm::vec3 d) { m_direction = d; }
 
-    void cache_uniforms(Shader *shader) const;
+    void cache_uniforms(MaterialUniforms &u) const;
 
     inline static int get_number_of_instances() { return INSTANCED_DIRECTIONAL_LIGHTS; }
 };

@@ -19,8 +19,8 @@ struct ShaderStageSource
     std::string vertexBit;
     std::string fragmentBit;
     std::string geometryBit;
-    std::string tesselationBit;
-    std::string tesselation__Bit;
+    std::string tesselationCtrlBit;
+    std::string tesselationEvalBit;
 };
 
 class Shader
@@ -43,7 +43,7 @@ public:
 
     inline ShaderType get_type() { return m_type; }
 
-#pragma region single_uniform_pipeline
+#pragma region legacy_uniform_pipeline
 
     void set_bool(const char *name, bool value) const;
 

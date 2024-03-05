@@ -4,7 +4,6 @@ GLIB_NAMESPACE_BEGIN
 
 void Material::upload_uniforms() const
 {
-    m_pipeline.shader->bind();
 
     for (auto &vec3u : m_uniforms.vec3Types)
     {
@@ -31,7 +30,7 @@ void Material::upload_uniforms() const
         m_pipeline.shader->set_bool(bu.first.c_str(), bu.second);
     }
 
-    m_pipeline.shader->unbind();
+    // m_pipeline.shader->unbind();
 }
 
 void Material::setup_pipeline()

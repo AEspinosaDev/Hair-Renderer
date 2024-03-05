@@ -4,6 +4,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 #include "object3D.h"
+#include "material.h"
 #include "utils.h"
 
 GLIB_NAMESPACE_BEGIN
@@ -32,27 +33,36 @@ struct Geometry
     size_t triangles;
     std::vector<Vertex> vertices;
     std::vector<unsigned int> indices;
+    bool indexed;
 };
 
 class Mesh : public Object3D
 {
 protected:
     unsigned int m_vao;
+
     Geometry m_geometry;
-    bool m_indexed;
+    Material *m_material;
 
     bool m_geometry_loaded{false};
     bool m_buffer_loaded{false};
+
     static int INSTANCED_MESHES;
 
 public:
-    Mesh() : Object3D("Mesh", {0.0f, 0.0f, 0.0f}, Object3DType::MESH) { Mesh::INSTANCED_MESHES++; }
+    Mesh() : Object3D("Mesh", {0.0f, 0.0f, 0.0f}, Object3DType::MESH), m_material(nullptr) { Mesh::INSTANCED_MESHES++; }
+    Mesh(Geometry &geometry, Material *const material) : Object3D("Mesh", {0.0f, 0.0f, 0.0f}, Object3DType::MESH), m_material(material), m_geometry(geometry) { Mesh::INSTANCED_MESHES++; }
 
     inline unsigned int get_buffer_id() const { return m_vao; }
-    inline bool is_indexed() const { return m_indexed; }
     inline bool is_buffer_loaded() const { return m_buffer_loaded; }
 
     void set_geometry(Geometry &g);
+
+    inline Geometry get_geometry() const { return m_geometry; }
+
+    inline void set_material(Material *const material) { m_material = material; }
+
+    inline Material *const get_material() const { return m_material; }
 
     virtual void generate_buffers();
 

@@ -43,6 +43,17 @@ out vec3 g_tangent;
 
 uniform float u_thickness;
 
+void emitQuadPoint(vec4 origin, vec4 offsetDirection ,float offset,vec4 strandDirection, int id  ){
+        gl_Position  = origin + offsetDirection * offset;
+        g_pos = gl_Position.xyz;
+        g_color = v_color[id];
+        g_lightPos = v_lightPos[id];
+        g_normal = normalize(cross(offsetDirection.xyz,strandDirection.xyz));
+        // g_tangent = strandDirection.xyz;
+        g_tangent = v_tangent[0];
+        EmitVertex();
+}
+
 void main() {
         vec4 startPoint = gl_in[0].gl_Position;
         vec4 endPoint = gl_in[1].gl_Position;
@@ -61,39 +72,10 @@ void main() {
 
         float halfLength = u_thickness*0.5f;
 
-        gl_Position = startPoint + startNormal * halfLength;
-        g_pos = gl_Position.xyz;
-        g_color = v_color[0];
-        g_lightPos = v_lightPos[0];
-        g_normal = normalize(cross(startNormal.xyz,strandDirection.xyz));
-        g_tangent = strandDirection.xyz;
-        EmitVertex();
-
-        gl_Position = endPoint + endNormal * halfLength;
-        g_pos = gl_Position.xyz;
-        g_color = v_color[1];
-         g_lightPos = v_lightPos[0];
-        g_normal = normalize(cross(endNormal.xyz,strandDirection.xyz));
-        g_tangent = strandDirection.xyz;
-        EmitVertex();
-
-        gl_Position = startPoint - startNormal * halfLength;
-        g_pos = gl_Position.xyz;
-        g_color = v_color[0];
-         g_lightPos = v_lightPos[0];
-        g_normal = normalize(cross(startNormal.xyz,strandDirection.xyz));
-        g_tangent = strandDirection.xyz;
-        EmitVertex();
-
-        gl_Position = endPoint - endNormal * halfLength;
-        g_pos = gl_Position.xyz;
-        g_color = v_color[1];
-         g_lightPos = v_lightPos[0];
-        g_normal = normalize(cross(endNormal.xyz,strandDirection.xyz));
-        g_tangent = strandDirection.xyz;
-        EmitVertex();
-        EndPrimitive();
-
+        emitQuadPoint(startPoint,startNormal,halfLength,strandDirection,0);
+        emitQuadPoint(endPoint,endNormal,halfLength,strandDirection,1);
+        emitQuadPoint(startPoint,-startNormal,halfLength,strandDirection,0);
+        emitQuadPoint(endPoint,-endNormal,halfLength,strandDirection,1);
 
 }
 

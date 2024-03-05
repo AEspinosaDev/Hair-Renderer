@@ -7,12 +7,9 @@ void HairRenderer::init()
 
     chdir("/home/tony/Dev/OpenGL-Hair/");
 
-    m_camera = new Camera(m_window.extent.width, m_window.extent.height,{0.0f,0.0f,-10.0f});
+    m_camera = new Camera(m_window.extent.width, m_window.extent.height, {0.0f, 0.0f, -10.0f});
 
     m_controller = new Controller(m_camera);
-
-    m_hairShader = new Shader("resources/shaders/test.glsl", ShaderType::LIT);
-    m_headShader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
 
     m_light = new PointLight();
     m_light->set_position({5.0f, 3.0f, -7.0f});
@@ -20,27 +17,37 @@ void HairRenderer::init()
     m_hair = new Mesh();
     m_head = new Mesh();
 
+    GraphicPipeline hpipeline{};
+    hpipeline.shader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
+    Material *headMaterial = new Material(hpipeline);
+    m_head->set_material(headMaterial);
+
+    GraphicPipeline spipeline{};
+    spipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
+    Material *hairMaterial = new Material(spipeline);
+    m_hair->set_material(hairMaterial);
+
     // CEM YUKSEL MODELS
     {
-        std::thread loadThread1(loaders::load_PLY, m_head, "resources/models/woman.ply", true, true, false);
-        loadThread1.detach();
-        m_head->set_rotation({180.0f, -90.0f, 0.0f});
-        std::thread loadThread2(loaders::load_cy_hair, m_hair, "resources/models/natural.hair");
-        loadThread2.detach();
-        m_hair->set_scale(0.054f);
-        m_hair->set_position({0.015f, -0.09f, 0.2f});
-        m_hair->set_rotation({-90.0f, 0.0f, 16.7f});
+        // std::thread loadThread1(loaders::load_PLY, m_head, "resources/models/woman.ply", true, true, false);
+        // loadThread1.detach();
+        // m_head->set_rotation({180.0f, -90.0f, 0.0f});
+        // std::thread loadThread2(loaders::load_cy_hair, m_hair, "resources/models/natural.hair");
+        // loadThread2.detach();
+        // m_hair->set_scale(0.054f);
+        // m_hair->set_position({0.015f, -0.09f, 0.2f});
+        // m_hair->set_rotation({-90.0f, 0.0f, 16.7f});
     }
 
     // NEURAL HAIRCUT MODELS
     {
-        // std::thread loadThread1(loaders::load_neural_hair, m_hair, "resources/models/hair_blender.ply", true, true, false);
-        // loadThread1.detach();
         // std::thread loadThread2(loaders::load_PLY, m_head, "resources/models/head_blender.ply", true, true, false);
         // loadThread2.detach();
+        // loadThread2.join();
+        loaders::load_PLY(m_head, "resources/models/head_blender.ply", true, true, false);
+        std::thread loadThread1(loaders::load_neural_hair, m_hair, "resources/models/2000000.ply", m_head, true, true, false);
+        loadThread1.detach();
     }
-
-    glDisable(GL_CULL_FACE);
 }
 
 void HairRenderer::update()
@@ -53,27 +60,26 @@ void HairRenderer::draw()
 {
     clearColorDepthBit();
 
-    m_headShader->bind();
+    glm::mat4 vp = m_camera->get_projection() * m_camera->get_view();
+    glm::mat4 mv = m_camera->get_view() * m_head->get_model_matrix();
 
-    m_headShader->set_mat4("u_viewProj", m_camera->get_projection() * m_camera->get_view());
-    m_headShader->set_mat4("u_modelView", m_camera->get_view() * m_head->get_model_matrix());
-    m_headShader->set_mat4("u_model", m_head->get_model_matrix());
-    m_headShader->set_mat4("u_view", m_camera->get_view());
-    m_light->cache_uniforms(m_headShader);
-    m_headShader->set_vec3("u_skinColor", m_headSettings.skinColor);
+    MaterialUniforms u;
+    u.mat4Types["u_viewProj"] = vp;
+    u.mat4Types["u_modelView"] = mv;
+    u.mat4Types["u_model"] = m_head->get_model_matrix();
+    u.mat4Types["u_view"] = m_camera->get_view();
+    u.vec3Types["u_skinColor"] = m_headSettings.skinColor;
+    u.floatTypes["u_thickness"] = m_hairSettings.thickness;
+    m_light->cache_uniforms(u);
+
+    m_head->get_material()->set_uniforms(u);
 
     m_head->draw();
 
-    m_hairShader->bind();
-    m_hairShader->set_float("u_thickness", m_hairSettings.thickness);
+    u.mat4Types["u_model"] = m_hair->get_model_matrix();
 
-    m_hairShader->set_mat4("u_viewProj", m_camera->get_projection() * m_camera->get_view());
-    m_hairShader->set_mat4("u_modelView", m_camera->get_view() * m_hair->get_model_matrix());
-    m_hairShader->set_mat4("u_model", m_hair->get_model_matrix());
-    m_hairShader->set_mat4("u_view", m_camera->get_view());
-    m_light->cache_uniforms(m_hairShader);
+    m_hair->get_material()->set_uniforms(u);
 
-    glLineWidth(m_hairSettings.thickness);
     m_hair->draw(GL_LINES);
 }
 
