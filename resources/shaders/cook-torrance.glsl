@@ -16,11 +16,14 @@ uniform vec3 u_lightPos;
 out vec3 _pos;
 out vec3 _normal;
 out vec3 _lightPos;
+out vec3 _color;
 
 void main() {
+    
     _pos = (u_modelView * vec4(position, 1.0)).xyz;
     _normal = normalize(mat3(transpose(inverse(u_modelView))) * normal);
     _lightPos = (u_view * vec4(u_lightPos, 1.0)).xyz;
+    _color = color;
 
     gl_Position = u_viewProj  * u_model * vec4(position, 1.0);
 
@@ -32,6 +35,7 @@ void main() {
 in vec3 _pos;
 in vec3 _normal;
 in vec3 _lightPos;
+in vec3 _color;
 
 uniform vec3 u_skinColor;
 

@@ -294,21 +294,40 @@ void loaders::load_PLY(Mesh *const mesh, const char *fileName, bool preload, boo
         {
             const float *posData = reinterpret_cast<const float *>(positions->buffer.get());
             const float *normalData;
+            unsigned char *colorData;
+            const float *uvData;
+
             if (normals)
                 normalData = reinterpret_cast<const float *>(normals->buffer.get());
+            if (colors)
+                colorData = reinterpret_cast<unsigned char *>(colors->buffer.get());
+            if (texcoords)
+                uvData = reinterpret_cast<const float *>(texcoords->buffer.get());
 
             for (size_t i = 0; i < positions->count; i++)
             {
+
+                // Position
                 float x = posData[i * 3];
                 float y = posData[i * 3 + 1];
                 float z = posData[i * 3 + 2];
 
+                // Normal
                 float nx = normals ? normalData[i * 3] : 0.0f;
                 float ny = normals ? normalData[i * 3 + 1] : 0.0f;
                 float nz = normals ? normalData[i * 3 + 2] : 0.0f;
 
+                // Vertex color
+                float r = colorData ? static_cast<float>(colorData[i * 4]) / 255 : 1.0f;
+                float g = colorData ? static_cast<float>(colorData[i * 4 + 1]) / 255 : 1.0f;
+                float b = colorData ? static_cast<float>(colorData[i * 4 + 2]) / 255 : 1.0f;
+
+                // UV
+                float u = uvData ? uvData[i * 2] : 0.0f;
+                float v = uvData ? uvData[i * 2 + 1] : 0.0f;
+
                 // Assuming Vertex has a constructor that takes position attributes
-                vertices.push_back({{x, y, z}, {nx, ny, nz}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}}); // You can set color and other attributes as needed
+                vertices.push_back({{x, y, z}, {nx, ny, nz}, {0.0f, 0.0f, 0.0f}, {u, v}, {r, g, b}}); // You can set color and other attributes as needed
             }
         }
         unsigned *facesData = reinterpret_cast<unsigned *>(faces->buffer.get());
@@ -468,129 +487,326 @@ void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *con
             }
         }
 
-        auto samplePoint = [=](glm::vec2 sample2D, glm::vec3 a, glm::vec3 b, glm::vec3 c)
+#define NORI_
+
+        auto samplePoint = [=](glm::vec2 sample, glm::vec3 a, glm::vec3 b, glm::vec3 c)
         {
+#ifdef NORI_
             // Warp to triangle
-            float su0 = std::sqrt(sample2D.x);
-            glm::vec2 uv = glm::vec2(1 - su0, sample2D.y * su0);
+            float t = std::sqrt(1.0f - sample.x);
+            glm::vec2 uv = glm::vec2(1.f - t, sample.y * t);
 
             // Get bary
-            glm::vec3 bary{1 - uv.length(), uv.x, uv.y};
+            glm::vec3 bary{1 - (uv.x + uv.y), uv.x, uv.y};
 
             // Compute global positon accurately
             // using barycentric coordinates
             glm::vec3 point = bary.x * a + bary.y * b + bary.z * c;
+#else
+            glm::vec3 u = b - a;
+            glm::vec3 v = c - a;
 
+            bool isValid = sample.x + sample.y <= 1;
+
+            glm::vec3 point = isValid ? sample.x * u + sample.y * v : (1 - sample.x) * u + (1 - sample.y) * v;
+#endif
             return point;
         };
 
-        auto augmentDensity = [=](Geometry &geom, unsigned int totalStrands)
+        auto augmentDensity = [&](Geometry &geom, unsigned int totalStrands)
         {
+
+#define CONCURRENT
             // Neural haircut asures it
             const unsigned int STRAND_LENGTH = rootsIndices[1] - rootsIndices[0] - 1;
             // Neighburs (should be user defined)
-            const unsigned int NEIGHBOURS = 3;
+            const unsigned int NEIGHBORS = 3;
+            // Color compare threshold for scalp vertices
+            const float COLOR_THRESHOLD = 0.1f;
 
             // Create a random number generator engine
             std::random_device rd;
-            std::mt19937 gen(rd()); // Mersenne Twister PRNG
-            std::uniform_real_distribution<double> dis(0.0, 1.0);
+            std::mt19937 gen(rd());                               // Mersenne Twister PRNG
+            std::uniform_real_distribution<double> dis(0.0, 1.0); // CHANGE IT TO PSEUDORANDOM (BLUE NOISE OR SOBOL)
 
-            std::vector<unsigned int> indices = skullMesh->get_geometry().indices;
             std::vector<Vertex> vertices = skullMesh->get_geometry().vertices;
+            std::vector<unsigned int> rawIndices = skullMesh->get_geometry().indices;
+            std::vector<unsigned int> indices;
+
+            // Check triangles susceptible of being scalp in skull
+            for (size_t i = 0; i < rawIndices.size(); i += 3)
+            {
+                if (vertices[rawIndices[i]].color.b < COLOR_THRESHOLD || vertices[rawIndices[i + 1]].color.b < COLOR_THRESHOLD || vertices[rawIndices[i + 2]].color.b < COLOR_THRESHOLD)
+                {
+                    // Save tri indices
+                    indices.push_back(rawIndices[i]);
+                    indices.push_back(rawIndices[i + 1]);
+                    indices.push_back(rawIndices[i + 2]);
+                }
+            }
+            // std::cout<< "SIZE " << indices.size()<< std::endl;
 
             std::vector<float> areas;
             float totalArea{0.0f};
             areas.reserve(indices.size() / 3);
-            // std::cout << "total                                            " << indices.size() << std::endl;
+
             // Compute total area
             for (size_t i = 0; i < indices.size(); i += 3)
             {
-                float area = 0.5f * glm::length(glm::cross(glm::vec3(vertices[i + 1].position - vertices[i].position), glm::vec3(vertices[i + 2].position - vertices[i].position)));
+                float area = 0.5f * glm::length(glm::cross(glm::vec3(vertices[indices[i + 1]].position - vertices[indices[i]].position), glm::vec3(vertices[indices[i + 2]].position - vertices[indices[i]].position)));
                 areas.push_back(area);
                 totalArea += area;
-                // std::cout << i << std::endl;
             }
 
-            // Populate
+            struct Neighbor
+            {
+                unsigned int id;
+                float dist;
+                float weight;
+            };
+
+#ifdef CONCURRENT
+
+            // NUMBER OF OPERATIONS PER TASK
+            const unsigned int NUM_TRIS = indices.size() / 3;
+            const unsigned int OPERATIONS = 2000;
+            const size_t NUM_TASKS = ceilf(NUM_TRIS / OPERATIONS);
+
+            std::vector<std::thread> tasks;
+            tasks.reserve(NUM_TASKS);
+
+            struct ScalpFace
+            {
+                unsigned int a;
+                unsigned int b;
+                unsigned int c;
+                unsigned int strands;
+                unsigned int cumulative;
+            };
+
+            std::vector<ScalpFace> triangles;
+            triangles.reserve(NUM_TRIS);
+
             size_t t = 0;
+            unsigned int accum = 0;
+            // Compute triangle areas and strands to grow
             for (size_t i = 0; i < indices.size(); i += 3, t++)
             {
                 // Uniformize number
                 float pdf = areas[t] / totalArea;
-                unsigned int strandsToGrow = totalStrands * pdf;
-                for (size_t s = 0; s < strandsToGrow; s++)
+                const unsigned int strands = totalStrands * pdf;
+                accum += strands;
+                triangles.push_back({indices[i], indices[i + 1], indices[i + 2], strands, accum});
+            }
+
+            // Setup key data strcutures
+            std::vector<std::vector<Neighbor>> nearestNeighbors;
+            nearestNeighbors.resize(accum);
+            std::vector<glm::vec3> roots;
+            roots.resize(accum);
+
+            auto computeNearestNeighbors = [&](size_t startFace, std::vector<std::vector<Neighbor>> nearestNeighbors)
+            {
+                for (size_t t = startFace; t < OPERATIONS; t++)
+                {
+                    if (t >= NUM_TRIS)
+                        break;
+
+                    // FOR STRAND
+                    for (size_t s = triangles[t].cumulative; s < triangles[t].strands; s++)
+                    {
+                        // Get random value
+                        glm::vec2 sample2D = glm::vec2(dis(gen), dis(gen));
+                        roots[s] = samplePoint(sample2D, vertices[triangles[t].a].position, vertices[triangles[t].b].position, vertices[triangles[t].c].position);
+
+                        // Neighbor adjacency list;
+                        std::vector<Neighbor> potentialNeighbors;
+                        potentialNeighbors.reserve(rootsIndices.size());
+
+                        for (size_t r = 0; r < rootsIndices.size(); r++)
+                        {
+                            float dist = glm::distance(geom.vertices[rootsIndices[r]].position, roots[s]);
+                            Neighbor potentialN{rootsIndices[r], dist};
+                            potentialNeighbors.push_back(potentialN);
+                        }
+
+                        // Sort from closest to farthest
+                        std::sort(potentialNeighbors.begin(), potentialNeighbors.end(), [](const Neighbor &a, const Neighbor &b)
+                                  { return a.dist < b.dist; });
+
+                        int count = 0;
+                        for (auto it = potentialNeighbors.begin(); it != potentialNeighbors.end() && count < NEIGHBORS; ++it, ++count)
+                        {
+                            nearestNeighbors[s].push_back(*it);
+                        }
+
+                        // Compute Neighbor weights
+                        float totalWeight = 0;
+
+                        // RANDON WEIGHT PER Neighbor
+                        for (size_t nn = 0; nn < NEIGHBORS; nn++)
+                        {
+                            nearestNeighbors[s][nn].weight = 1 / (nearestNeighbors[s][nn].dist * nearestNeighbors[s][nn].dist);
+                            totalWeight += nearestNeighbors[s][nn].weight;
+                        }
+                        // // NORMALIZE WEIGHTS
+                        for (size_t nn = 0; nn < NEIGHBORS; nn++)
+                        {
+                            nearestNeighbors[s][nn].weight = nearestNeighbors[s][nn].weight / totalWeight;
+                        }
+                    }
+                }
+            };
+
+            for (size_t tk = 0; tk < NUM_TASKS; tk++)
+            {
+                std::thread task(computeNearestNeighbors, OPERATIONS * tk, nearestNeighbors);
+                // task.detach();
+                tasks.push_back(move(task));
+            }
+
+            // WAIT FOR THREADS TO FINISH
+            for (std::thread &t : tasks)
+            {
+                t.join();
+            }
+
+            // CHOOSE RANDOM COLOR FOR DEBUG
+            // glm::vec3 color = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
+            glm::vec3 color = {1.0f, 0.0f, 0.0f};
+
+            // GROW NEW STRAND
+            for (size_t s = 0; s < accum; s++)
+            {
+
+                unsigned int currentIndex = geom.indices.back() + 1;
+                for (size_t p = 0; p < STRAND_LENGTH; p++)
+                {
+                    if (p > 0)
+                    {
+                        glm::vec3 weightedPos = glm::vec3(0.0f);
+                        for (size_t n = 0; n < NEIGHBORS; n++)
+                        {
+                            if (nearestNeighbors[s][n].id < geom.indices.size())
+                            {
+                                weightedPos += geom.vertices[nearestNeighbors[s][n].id + p].position * nearestNeighbors[s][n].weight;
+
+                                // std::cout << "N_ " << geom.vertices[nearestNeighbors[n].id + p].position.x << " "
+                                //           << geom.vertices[nearestNeighbors[n].id + p].position.y << " " << geom.vertices[nearestNeighbors[n].id + p].position.z << " W_ " << weights[n] << std::endl;
+                            }
+                        }
+
+                        glm::vec3 newPos = weightedPos;
+
+                        // std::cout << "NEW " << newPos.x << " "
+                        //           << newPos.y << " " << newPos.z << std::endl;
+
+                        geom.vertices.push_back({newPos, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, color});
+                    }
+                    else
+                    {
+                        geom.vertices.push_back({roots[s], {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, color});
+                    }
+                    // Control index generation
+                    if (p < STRAND_LENGTH - 1)
+                    {
+                        geom.indices.push_back(currentIndex);
+                        geom.indices.push_back(currentIndex + 1);
+                        currentIndex++;
+                    }
+                }
+            }
+#else
+            // Populate
+            size_t t = 0;
+            // std::cout << indices.size() << std::endl;
+
+            for (size_t i = 0; i < indices.size(); i += 3, t++)
+            {
+                // Uniformize number
+                float pdf = areas[t] / totalArea;
+                const unsigned int STRANDS_TO_GROW = totalStrands * pdf;
+
+                for (size_t s = 0; s < STRANDS_TO_GROW; s++)
                 {
 
                     // Get random value
                     glm::vec2 sample2D = glm::vec2(dis(gen), dis(gen));
-                    glm::vec3 root = samplePoint(sample2D, vertices[i].position, vertices[i + 1].position, vertices[i + 2].position);
+                    glm::vec3 root = samplePoint(sample2D, vertices[indices[i]].position, vertices[indices[i + 1]].position, vertices[indices[i + 2]].position);
 
-                    struct Neighbour
-                    {
-                        unsigned int id;
-                        float dist;
-                    };
+                    // Check nearest Neighbors
+                    std::vector<Neighbor> nearestNeighbors;
 
-                    // Check nearest neighbours
-                    std::vector<Neighbour> nearestNeighbours;
-
-                    // Neighbour adjacency list;
-                    std::vector<Neighbour> roots;
+                    // Neighbor adjacency list;
+                    std::vector<Neighbor> roots;
                     roots.reserve(rootsIndices.size());
+
                     for (size_t r = 0; r < rootsIndices.size(); r++)
                     {
                         float dist = glm::distance(geom.vertices[rootsIndices[r]].position, root);
-                        Neighbour potentialN{rootsIndices[r], dist};
+                        Neighbor potentialN{rootsIndices[r], dist};
                         roots.push_back(potentialN);
                     }
 
-                    std::sort(roots.begin(), roots.end(), [](const Neighbour &a, const Neighbour &b)
+                    // Sort from closest to farthest
+                    std::sort(roots.begin(), roots.end(), [](const Neighbor &a, const Neighbor &b)
                               { return a.dist < b.dist; });
 
-                    float totalDist = 0.0f;
                     int count = 0;
-                    for (auto it = roots.begin(); it != roots.end() && count < NEIGHBOURS; ++it, ++count)
+                    for (auto it = roots.begin(); it != roots.end() && count < NeighborS; ++it, ++count)
                     {
-                        nearestNeighbours.push_back(*it);
+                        nearestNeighbors.push_back(*it);
                     }
 
-                    // Compute neighbour weights
-                    std::vector<float> weights;
-                    weights.reserve(NEIGHBOURS);
+                    // Compute Neighbor weights
                     float totalWeight = 0;
 
-                    // RANDON WEIGHT PER NEIGHBOUR
-                    for (size_t nn = 0; nn < NEIGHBOURS; nn++)
+                    // RANDON WEIGHT PER Neighbor
+                    for (size_t nn = 0; nn < NeighborS; nn++)
                     {
-                        float w = 1 / (nearestNeighbours[nn].dist * nearestNeighbours[nn].dist);
-                        weights.push_back(w);
-                        totalWeight += w;
+                        nearestNeighbors[nn].weight = 1 / (nearestNeighbors[nn].dist * nearestNeighbors[nn].dist);
+                        totalWeight += nearestNeighbors[nn].weight;
                     }
-                    //NORMALIZE WEIGHTS
-                    for (size_t w = 0; w < NEIGHBOURS; w++)
+                    // // NORMALIZE WEIGHTS
+                    for (size_t nn = 0; nn < NeighborS; nn++)
                     {
-                       weights[w]= weights[w] / totalWeight;
+                        nearestNeighbors[nn].weight = nearestNeighbors[nn].weight / totalWeight;
                     }
-    
 
                     // CHOOSE RANDOM COLOR FOR DEBUG
-                    glm::vec3 color = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
+                    // glm::vec3 color = {((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX};
+                    glm::vec3 color = {1.0f, 0.0f, 0.0f};
 
                     // GROW NEW STRAND
                     unsigned int currentIndex = geom.indices.back() + 1;
-                    for (size_t p = 1; p < STRAND_LENGTH; p++)
+                    for (size_t p = 0; p < STRAND_LENGTH; p++)
                     {
-                        glm::vec3 totalWeightedPos = glm::vec3(0.0f);
-                        for (size_t k = 0; k < NEIGHBOURS; k++)
+                        if (p > 0)
                         {
-                            totalWeightedPos += geom.vertices[nearestNeighbours[i].id + p].position * weights[k];
+                            glm::vec3 weightedPos = glm::vec3(0.0f);
+                            for (size_t n = 0; n < NeighborS; n++)
+                            {
+                                if (nearestNeighbors[n].id < geom.indices.size())
+                                {
+                                    weightedPos += geom.vertices[nearestNeighbors[n].id + p].position * nearestNeighbors[n].weight;
+
+                                    // std::cout << "N_ " << geom.vertices[nearestNeighbors[n].id + p].position.x << " "
+                                    //           << geom.vertices[nearestNeighbors[n].id + p].position.y << " " << geom.vertices[nearestNeighbors[n].id + p].position.z << " W_ " << weights[n] << std::endl;
+                                }
+                            }
+
+                            glm::vec3 newPos = weightedPos;
+
+                            // std::cout << "NEW " << newPos.x << " "
+                            //           << newPos.y << " " << newPos.z << std::endl;
+
+                            geom.vertices.push_back({newPos, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, color});
                         }
-
-                        // glm::vec3 newPos = totalWeightedPos / totalWeight;
-                        glm::vec3 newPos = totalWeightedPos;
-
-                        geom.vertices.push_back({newPos, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, color});
+                        else
+                        {
+                            geom.vertices.push_back({root, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, color});
+                        }
+                        // Control index generation
                         if (p < STRAND_LENGTH - 1)
                         {
                             geom.indices.push_back(currentIndex);
@@ -599,8 +815,8 @@ void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *con
                         }
                     }
                 }
-                t++;
             }
+#endif
         };
 
         Geometry g;

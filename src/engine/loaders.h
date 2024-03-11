@@ -2,6 +2,7 @@
 #define __LOADERS__
 
 #include <random>
+#include <thread>
 #include <unordered_map>
 #include <algorithm>
 #include <tiny_obj_loader.h>
