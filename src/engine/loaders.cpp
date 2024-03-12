@@ -487,11 +487,9 @@ void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *con
             }
         }
 
-#define NORI_
 
         auto samplePoint = [=](glm::vec2 sample, glm::vec3 a, glm::vec3 b, glm::vec3 c)
         {
-#ifdef NORI_
             // Warp to triangle
             float t = std::sqrt(1.0f - sample.x);
             glm::vec2 uv = glm::vec2(1.f - t, sample.y * t);
@@ -502,14 +500,7 @@ void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *con
             // Compute global positon accurately
             // using barycentric coordinates
             glm::vec3 point = bary.x * a + bary.y * b + bary.z * c;
-#else
-            glm::vec3 u = b - a;
-            glm::vec3 v = c - a;
 
-            bool isValid = sample.x + sample.y <= 1;
-
-            glm::vec3 point = isValid ? sample.x * u + sample.y * v : (1 - sample.x) * u + (1 - sample.y) * v;
-#endif
             return point;
         };
 
@@ -570,7 +561,7 @@ void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *con
             // NUMBER OF OPERATIONS PER TASK
             const unsigned int NUM_TRIS = indices.size() / 3;
             const unsigned int OPERATIONS = 2000;
-            const size_t NUM_TASKS = ceilf(NUM_TRIS / OPERATIONS);
+            const size_t NUM_TASKS = (NUM_TRIS / OPERATIONS) +1;
 
             std::vector<std::thread> tasks;
             tasks.reserve(NUM_TASKS);
@@ -588,32 +579,34 @@ void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *con
             triangles.reserve(NUM_TRIS);
 
             size_t t = 0;
-            unsigned int accum = 0;
+            unsigned int accumStrands = 0;
             // Compute triangle areas and strands to grow
             for (size_t i = 0; i < indices.size(); i += 3, t++)
             {
                 // Uniformize number
                 float pdf = areas[t] / totalArea;
                 const unsigned int strands = totalStrands * pdf;
-                accum += strands;
-                triangles.push_back({indices[i], indices[i + 1], indices[i + 2], strands, accum});
+                triangles.push_back({indices[i], indices[i + 1], indices[i + 2], strands, accumStrands});
+                accumStrands += strands;
             }
 
             // Setup key data strcutures
             std::vector<std::vector<Neighbor>> nearestNeighbors;
-            nearestNeighbors.resize(accum);
+            nearestNeighbors.resize(accumStrands);
             std::vector<glm::vec3> roots;
-            roots.resize(accum);
+            roots.resize(accumStrands);
 
-            auto computeNearestNeighbors = [&](size_t startFace, std::vector<std::vector<Neighbor>> nearestNeighbors)
+            auto computeNearestNeighbors = [&](size_t taskID)
             {
-                for (size_t t = startFace; t < OPERATIONS; t++)
+                for (size_t t = OPERATIONS*taskID; t < OPERATIONS*(taskID+1); t++)
                 {
                     if (t >= NUM_TRIS)
                         break;
 
                     // FOR STRAND
-                    for (size_t s = triangles[t].cumulative; s < triangles[t].strands; s++)
+                    const size_t START_STRAND =  triangles[t].cumulative;
+                    const size_t END_STRAND =  triangles[t].cumulative+triangles[t].strands;
+                    for (size_t s = START_STRAND; s <END_STRAND ; s++)
                     {
                         // Get random value
                         glm::vec2 sample2D = glm::vec2(dis(gen), dis(gen));
@@ -642,8 +635,6 @@ void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *con
 
                         // Compute Neighbor weights
                         float totalWeight = 0;
-
-                        // RANDON WEIGHT PER Neighbor
                         for (size_t nn = 0; nn < NEIGHBORS; nn++)
                         {
                             nearestNeighbors[s][nn].weight = 1 / (nearestNeighbors[s][nn].dist * nearestNeighbors[s][nn].dist);
@@ -660,7 +651,7 @@ void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *con
 
             for (size_t tk = 0; tk < NUM_TASKS; tk++)
             {
-                std::thread task(computeNearestNeighbors, OPERATIONS * tk, nearestNeighbors);
+                std::thread task(computeNearestNeighbors, tk);
                 // task.detach();
                 tasks.push_back(move(task));
             }
@@ -676,7 +667,7 @@ void loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *con
             glm::vec3 color = {1.0f, 0.0f, 0.0f};
 
             // GROW NEW STRAND
-            for (size_t s = 0; s < accum; s++)
+            for (size_t s = 0; s < accumStrands; s++)
             {
 
                 unsigned int currentIndex = geom.indices.back() + 1;
