@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <unistd.h>
 #include <thread>
+
 #include "engine/shader.h"
 #include "engine/mesh.h"
 #include "engine/loaders.h"
@@ -12,7 +13,9 @@
 #include "engine/light.h"
 #include "engine/gui_layer.h"
 #include "engine/renderer.h"
+
 #include "settings.h"
+#include "hair_loaders.h"
 
 USING_NAMESPACE_GLIB
 

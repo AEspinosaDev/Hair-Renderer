@@ -46,7 +46,7 @@ void HairRenderer::init()
         // loadThread2.join();
         loaders::load_PLY(m_head, "resources/models/head_blender.ply", true, true, false);
         // loaders::load_neural_hair(m_hair, "resources/models/2000000.ply", m_head, true, true);
-        std::thread loadThread1(loaders::load_neural_hair, m_hair, "resources/models/2000000.ply", m_head, true, true, false);
+        std::thread loadThread1(hair_loaders::load_neural_hair, m_hair, "resources/models/2000000.ply", m_head, true, true, false);
         loadThread1.detach();
     }
 }

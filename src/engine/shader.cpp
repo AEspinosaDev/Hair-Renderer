@@ -50,7 +50,7 @@ void Shader::set_vec3(const char *name, glm::vec3 value)
 void Shader::set_vec4(const char *name, glm::vec4 value)
 {
 
-    glUniform4fv(get_uniform_location(name), 1, &value[0]);
+    GL_CHECK(glUniform4fv(get_uniform_location(name), 1, &value[0]));
 }
 
 unsigned int Shader::get_uniform_location(const char *name)
@@ -58,6 +58,24 @@ unsigned int Shader::get_uniform_location(const char *name)
     if (m_uniformLocationCache.find(name) != m_uniformLocationCache.end())
         return m_uniformLocationCache[name];
     GL_CHECK(int location = glGetUniformLocation(m_ID, name));
+
+    if (location != -1)
+        m_uniformLocationCache[name] = location;
+
+    return location;
+}
+
+void Shader::set_uniform_block(const char *name, unsigned int id)
+{
+    GL_CHECK(glUniformBlockBinding(m_ID, get_uniform_block(name), id));
+}
+
+unsigned int Shader::get_uniform_block(const char *name)
+{
+    if (m_uniformBlockCache.find(name) != m_uniformBlockCache.end())
+        return m_uniformBlockCache[name];
+
+    GL_CHECK(int location = glGetUniformBlockIndex(m_ID, name));
 
     if (location != -1)
         m_uniformLocationCache[name] = location;

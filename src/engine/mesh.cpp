@@ -20,8 +20,8 @@ void Mesh::generate_buffers()
 
     GL_CHECK(glBindVertexArray(m_vao));
 
-    // [ATTENTION ATTENTION]
-    // INTERLEAVED ATTRIBUTES
+    // -------------------- [ATTENTION ATTENTION] ---------------------
+    //  ------------------  INTERLEAVED ATTRIBUTES  -------------------- 
 
     unsigned int vbo;
     GL_CHECK(glGenBuffers(1, &vbo));

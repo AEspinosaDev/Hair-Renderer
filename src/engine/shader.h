@@ -28,7 +28,9 @@ class Shader
 protected:
     unsigned int m_ID; // PROGRAM ID
     ShaderType m_type;
-    std::unordered_map<const char *, int> m_uniformLocationCache;
+    
+    std::unordered_map<const char *, int> m_uniformLocationCache; //Legacy uniform pipeline
+    std::unordered_map<const char* , int> m_uniformBlockCache; //Unifrom buffer pipeline
 
 public:
     Shader(const char *filename, ShaderType t);
@@ -61,10 +63,14 @@ public:
 
 #pragma region uniform_buffer_pipeline
 
+    void set_uniform_block(const char *name, unsigned int id);
+
 #pragma endregion
 
 private:
     unsigned int get_uniform_location(const char *name);
+
+    unsigned int get_uniform_block(const char* name);
 
     virtual unsigned int compile(unsigned int type, const char *source);
 
