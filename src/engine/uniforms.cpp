@@ -23,12 +23,12 @@ void UniformBuffer::generate()
 }
 
 
-// void UniformBuffer::cache_data(const size_t sizeInBytes, const void *data, const size_t offset)
-// {
-//     GL_CHECK(glBindBuffer(GL_UNIFORM_BUFFER, m_id));
-//     glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeInBytes, &data);
-//     GL_CHECK(glBindBuffer(GL_UNIFORM_BUFFER, 0));
-// }
+void UniformBuffer::cache_data(const size_t sizeInBytes, const void * data, const size_t offset) const
+{
+    GL_CHECK(glBindBuffer(GL_UNIFORM_BUFFER, m_id));
+    glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeInBytes, data);
+    GL_CHECK(glBindBuffer(GL_UNIFORM_BUFFER, 0));
+}
 
 void UniformBuffer::bind() const
 {

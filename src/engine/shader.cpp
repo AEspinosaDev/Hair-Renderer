@@ -78,7 +78,7 @@ unsigned int Shader::get_uniform_block(const char *name)
     GL_CHECK(int location = glGetUniformBlockIndex(m_ID, name));
 
     if (location != -1)
-        m_uniformLocationCache[name] = location;
+        m_uniformBlockCache[name] = location;
 
     return location;
 }

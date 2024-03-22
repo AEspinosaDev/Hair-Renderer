@@ -32,7 +32,7 @@ public:
 
     void unbind() const;
 
-    // void cache_data(const size_t sizeInBytes, const void * data, const size_t offset = 0) const;
+    void cache_data(const size_t sizeInBytes, const void * data, const size_t offset = 0) const;
 
 };
 

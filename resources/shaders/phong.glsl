@@ -7,22 +7,31 @@ layout(location = 2) in vec3 tangent;
 layout(location = 3) in vec3 uv;
 layout(location = 4) in vec3 color;
 
-uniform mat4 u_viewProj;
-uniform mat4 u_modelView;
-uniform mat4 u_view;
+layout (std140) uniform Camera
+{
+    mat4 viewProj;
+    mat4 modelView;
+    mat4 view;
+}u_camera;
+
 uniform mat4 u_model;
 uniform vec3 u_lightPos;
 
 out vec3 _pos;
 out vec3 _normal;
 out vec3 _lightPos;
+out vec3 _color;
 
 void main() {
-    _pos = (u_modelView * vec4(position, 1.0)).xyz;
-    _normal = normalize(mat3(transpose(inverse(u_modelView))) * normal);
-    _lightPos = (u_view * vec4(u_lightPos, 1.0)).xyz;
+    
+    _pos = (u_camera.modelView * vec4(position, 1.0)).xyz;
 
-    gl_Position = u_viewProj  * u_model * vec4(position, 1.0);
+    _normal = normalize(mat3(transpose(inverse(u_camera.modelView))) * normal);
+    _lightPos = (u_camera.view * vec4(u_lightPos, 1.0)).xyz;
+    _color = color;
+
+    gl_Position = u_camera.viewProj  * u_model * vec4(position, 1.0);
+
 
 }
 
@@ -36,6 +45,11 @@ in vec3 _lightPos;
 uniform vec3 u_skinColor;
 
 out vec4 FragColor;
+
+//Surface global properties
+vec3 g_normal = _normal;
+vec3 g_albedo = u_skinColor;
+float g_opacity = 1.0;
 
 // float computeAttenuation() {
     
@@ -52,12 +66,12 @@ vec3 phong() {
     vec3 viewDir = normalize(-_pos);
     vec3 halfVector = normalize(lightDir + viewDir);
 
-    vec3 diffuse = clamp(dot(lightDir, _normal), 0.0, 1.0) * vec3(1.0,1.0,1.0);
+    vec3 diffuse = clamp(dot(lightDir, g_normal), 0.0, 1.0) * vec3(1.0,1.0,1.0);
 
     //Blinn specular term
-    vec3 specular = pow(max(dot(_normal, halfVector), 0.0), 20.0) * 5.0 * vec3(1.0,1.0,1.0);
+    vec3 specular = pow(max(dot(g_normal, halfVector), 0.0), 20.0) * 5.0 * vec3(1.0,1.0,1.0);
 
-    vec3 color =  u_skinColor; //surface
+    vec3 color =  g_albedo; //surface
 
     // float att = computeAttenuation();
      float att = 1.0;
@@ -70,6 +84,6 @@ vec3 phong() {
 
 void main() {
     // FragColor = vec4(vec3(1.0,0.0,0.0), 1.0);
-    FragColor = vec4(phong(), 1.0);
+    FragColor = vec4(phong(), g_opacity);
 
 }

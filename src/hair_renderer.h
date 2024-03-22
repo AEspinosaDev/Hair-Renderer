@@ -12,6 +12,7 @@
 #include "engine/camera.h"
 #include "engine/light.h"
 #include "engine/gui_layer.h"
+#include "engine/uniforms.h"
 #include "engine/renderer.h"
 
 #include "settings.h"
@@ -22,16 +23,28 @@ USING_NAMESPACE_GLIB
 class HairRenderer : public Renderer
 {
 private:
+    //--- Scene ---
+
     Camera *m_camera;
     Controller *m_controller;
 
     Mesh *m_hair;
-    Shader *m_hairShader;
-
     Mesh *m_head;
-    Shader* m_headShader;
 
-    PointLight* m_light;
+    PointLight *m_light;
+
+    //--- Uniform data ---
+
+    enum UBOLayout
+    {
+        CAMERA_LAYOUT = 0,
+        OBJECT_LAYOUT = 1
+    };
+    
+    UniformBuffer *m_cameraBuffer;
+    UniformBuffer *m_objectBuffer;
+
+    //--- Settings ---
 
     GlobalSettings m_globalSettings{};
     UserInterfaceSettings m_UISettigns{};

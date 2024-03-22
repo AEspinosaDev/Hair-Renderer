@@ -324,19 +324,21 @@ void hair_loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh
                 {
                     // Compute differentials
                     glm::vec3 avrDiff = glm::vec3(0.0f);
+                    std::vector<glm::vec3> diffs;
+                    diffs.reserve(3);
 
                     for (size_t n = 0; n < NEIGHBORS; n++)
                     {
+                        if (nearestNeighbors[s][n].weight == 0)
+                            continue;
                         glm::vec3 diff = geom.vertices[nearestNeighbors[s][n].id + p].position - geom.vertices[nearestNeighbors[s][n].id + (p - 1)].position;
-
-                        // Check is this diff is way to big
-
+                        diffs.push_back(diff);
                         avrDiff += diff * nearestNeighbors[s][n].weight;
                     }
 
-                    //Update predecessor FRAME
-                    geom.vertices[geom.vertices.size()-1].tangent = glm::normalize(avrDiff);
-                    //Setup new FRAME
+                    // Update predecessor FRAME
+                    geom.vertices[geom.vertices.size() - 1].tangent = glm::normalize(avrDiff);
+                    // Setup new FRAME
                     geom.vertices.push_back({geom.vertices.back().position + avrDiff, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}, color});
 
                     // Control index generation
@@ -345,6 +347,20 @@ void hair_loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh
                         geom.indices.push_back(currentIndex);
                         geom.indices.push_back(currentIndex + 1);
                         currentIndex++;
+                    }
+
+                    // Compare diffs
+                    unsigned int checkID = (rand() % NEIGHBORS);
+                    glm::vec3 cDiff = glm::normalize(diffs[checkID]);
+                    for (size_t n = 0; n < NEIGHBORS; n++)
+                    {
+                        if (n == checkID)
+                            continue;
+                        if (nearestNeighbors[s][n].weight == 0.0f)
+                            continue;
+                        glm::vec3 diff = glm::normalize(diffs[n]);
+                        if (glm::dot(cDiff, diff) <= 0.0f)
+                            nearestNeighbors[s][n].weight = 0.0f;
                     }
                 }
             }
@@ -457,7 +473,7 @@ void hair_loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh
         Geometry g;
         g.vertices = vertices;
         g.indices = indices;
-        augmentDensity(g, 80000);
+        augmentDensity(g, 40000);
         mesh->set_geometry(g);
 
         return;

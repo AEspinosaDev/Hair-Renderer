@@ -189,6 +189,7 @@ public:
     virtual std::vector<Object3D *> get_children() const { return m_children; }
 
     virtual Object3D *get_parent() const { return m_parent; }
+
 };
 GLIB_NAMESPACE_END
 

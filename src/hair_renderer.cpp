@@ -17,38 +17,44 @@ void HairRenderer::init()
     m_hair = new Mesh();
     m_head = new Mesh();
 
+    const size_t CAMERA_MAT_NUM = 3;
+    const size_t NUM_OBJS = 2;
+    m_cameraBuffer = new UniformBuffer(sizeof(glm::mat4) * CAMERA_MAT_NUM);
+    m_cameraBuffer->generate();
+
     GraphicPipeline hpipeline{};
     hpipeline.shader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
+    hpipeline.shader->set_uniform_block("Camera", CAMERA_LAYOUT);
     Material *headMaterial = new Material(hpipeline);
     m_head->set_material(headMaterial);
 
     GraphicPipeline spipeline{};
     spipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
+    spipeline.shader->set_uniform_block("Camera", CAMERA_LAYOUT);
     Material *hairMaterial = new Material(spipeline);
     m_hair->set_material(hairMaterial);
 
+#define YUKSEL
+#ifdef YUKSEL
     // CEM YUKSEL MODELS
     {
-        // std::thread loadThread1(loaders::load_PLY, m_head, "resources/models/woman.ply", true, true, false);
-        // loadThread1.detach();
-        // m_head->set_rotation({180.0f, -90.0f, 0.0f});
-        // std::thread loadThread2(loaders::load_cy_hair, m_hair, "resources/models/natural.hair");
-        // loadThread2.detach();
-        // m_hair->set_scale(0.054f);
-        // m_hair->set_position({0.015f, -0.09f, 0.2f});
-        // m_hair->set_rotation({-90.0f, 0.0f, 16.7f});
+        std::thread loadThread1(loaders::load_PLY, m_head, "resources/models/woman.ply", true, true, false);
+        loadThread1.detach();
+        m_head->set_rotation({180.0f, -90.0f, 0.0f});
+        std::thread loadThread2(hair_loaders::load_cy_hair, m_hair, "resources/models/natural.hair");
+        loadThread2.detach();
+        m_hair->set_scale(0.054f);
+        m_hair->set_position({0.015f, -0.09f, 0.2f});
+        m_hair->set_rotation({-90.0f, 0.0f, 16.7f});
     }
-
+#else
     // NEURAL HAIRCUT MODELS
     {
-        // std::thread loadThread2(loaders::load_PLY, m_head, "resources/models/head_blender.ply", true, true, false);
-        // loadThread2.detach();
-        // loadThread2.join();
         loaders::load_PLY(m_head, "resources/models/head_blender.ply", true, true, false);
-        // loaders::load_neural_hair(m_hair, "resources/models/2000000.ply", m_head, true, true);
         std::thread loadThread1(hair_loaders::load_neural_hair, m_hair, "resources/models/2000000.ply", m_head, true, true, false);
         loadThread1.detach();
     }
+    #endif
 }
 
 void HairRenderer::update()
@@ -59,27 +65,40 @@ void HairRenderer::update()
 
 void HairRenderer::draw()
 {
+    // ---- Update global uniform buffers ----
+    struct CameraUniforms
+    {
+        glm::mat4 vp;
+        glm::mat4 mv;
+        glm::mat4 v;
+    };
+    CameraUniforms camu;
+    camu.vp = m_camera->get_projection() * m_camera->get_view();
+    camu.mv = m_camera->get_view() * m_head->get_model_matrix();
+    camu.v = m_camera->get_view();
+    m_cameraBuffer->cache_data(sizeof(CameraUniforms), &camu);
+
+    // ----- Draw ----
     clearColorDepthBit();
 
-    glm::mat4 vp = m_camera->get_projection() * m_camera->get_view();
-    glm::mat4 mv = m_camera->get_view() * m_head->get_model_matrix();
-
-    MaterialUniforms u;
-    u.mat4Types["u_viewProj"] = vp;
-    u.mat4Types["u_modelView"] = mv;
-    u.mat4Types["u_model"] = m_head->get_model_matrix();
-    u.mat4Types["u_view"] = m_camera->get_view();
-    u.vec3Types["u_skinColor"] = m_headSettings.skinColor;
-    u.floatTypes["u_thickness"] = m_hairSettings.thickness;
-    m_light->cache_uniforms(u);
-
-    m_head->get_material()->set_uniforms(u);
+    MaterialUniforms headu;
+    headu.mat4Types["u_model"] = m_head->get_model_matrix();
+    headu.vec3Types["u_skinColor"] = m_headSettings.skinColor;
+    m_light->cache_uniforms(headu);
+    m_head->get_material()->set_uniforms(headu);
 
     m_head->draw();
 
-    u.mat4Types["u_model"] = m_hair->get_model_matrix();
-
-    m_hair->get_material()->set_uniforms(u);
+    MaterialUniforms hairu;
+    hairu.mat4Types["u_model"] = m_hair->get_model_matrix();
+    hairu.vec3Types["u_albedo"] = m_hairSettings.color;
+    hairu.vec3Types["u_spec1"] = m_hairSettings.specColor1;
+    hairu.floatTypes["u_specPwr1"] = m_hairSettings.specPower1;
+    hairu.vec3Types["u_spec2"] = m_hairSettings.specColor2;
+    hairu.floatTypes["u_specPwr2"] = m_hairSettings.specPower2;
+    hairu.floatTypes["u_thickness"] = m_hairSettings.thickness;
+    m_light->cache_uniforms(hairu);
+    m_hair->get_material()->set_uniforms(hairu);
 
     m_hair->draw(GL_LINES);
 }
@@ -105,6 +124,7 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::SeparatorText("Hair Settings");
     gui::draw_transform_widget(m_hair);
     ImGui::DragFloat("Strand thickness", &m_hairSettings.thickness, 0.001f, 0.001f, 0.05f);
+    ImGui::ColorEdit3("Strand color", (float *)&m_hairSettings.color);
     ImGui::Separator();
     ImGui::SeparatorText("Head Settings");
     gui::draw_transform_widget(m_head);

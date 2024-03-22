@@ -7,9 +7,13 @@ layout(location = 2) in vec3 tangent;
 layout(location = 3) in vec3 uv;
 layout(location = 4) in vec3 color;
 
-uniform mat4 u_viewProj;
-uniform mat4 u_modelView;
-uniform mat4 u_view;
+layout (std140) uniform Camera
+{
+    mat4 viewProj;
+    mat4 modelView;
+    mat4 view;
+}u_camera;
+
 uniform mat4 u_model;
 uniform vec3 u_lightPos;
 
@@ -20,12 +24,14 @@ out vec3 _color;
 
 void main() {
     
-    _pos = (u_modelView * vec4(position, 1.0)).xyz;
-    _normal = normalize(mat3(transpose(inverse(u_modelView))) * normal);
-    _lightPos = (u_view * vec4(u_lightPos, 1.0)).xyz;
+    _pos = (u_camera.modelView * vec4(position, 1.0)).xyz;
+
+    _normal = normalize(mat3(transpose(inverse(u_camera.modelView))) * normal);
+    _lightPos = (u_camera.view * vec4(u_lightPos, 1.0)).xyz;
     _color = color;
 
-    gl_Position = u_viewProj  * u_model * vec4(position, 1.0);
+    gl_Position = u_camera.viewProj  * u_model * vec4(position, 1.0);
+
 
 }
 
