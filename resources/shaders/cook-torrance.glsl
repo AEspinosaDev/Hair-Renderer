@@ -15,11 +15,10 @@ layout (std140) uniform Camera
 }u_camera;
 
 uniform mat4 u_model;
-uniform vec3 u_lightPos;
+
 
 out vec3 _pos;
 out vec3 _normal;
-out vec3 _lightPos;
 out vec3 _color;
 
 void main() {
@@ -27,7 +26,6 @@ void main() {
     _pos = (u_camera.modelView * vec4(position, 1.0)).xyz;
 
     _normal = normalize(mat3(transpose(inverse(u_camera.modelView))) * normal);
-    _lightPos = (u_camera.view * vec4(u_lightPos, 1.0)).xyz;
     _color = color;
 
     gl_Position = u_camera.viewProj  * u_model * vec4(position, 1.0);
@@ -40,10 +38,10 @@ void main() {
 
 in vec3 _pos;
 in vec3 _normal;
-in vec3 _lightPos;
 in vec3 _color;
 
 uniform vec3 u_skinColor;
+uniform vec3 u_lightPos;
 
 out vec4 FragColor;
 
@@ -101,7 +99,7 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
 vec3 computeLighting() {
 
     //Vector setup
-    vec3 lightDir = normalize(_lightPos - _pos);
+    vec3 lightDir = normalize(u_lightPos - _pos);
     vec3 viewDir = normalize(-_pos);
     vec3 halfVector = normalize(lightDir + viewDir); //normalize(viewDir + lightDir);
 

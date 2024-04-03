@@ -16,7 +16,7 @@ void HairRenderer::init()
 
     m_light.light = new PointLight();
     m_light.dummy = new Mesh();
-    loaders::load_OBJ(m_light.dummy,"resources/models/sphere.obj");
+    loaders::load_OBJ(m_light.dummy, "resources/models/sphere.obj");
     m_light.set_position({3.0f, 2.0f, -3.0f});
 
     const size_t CAMERA_MAT_NUM = 3;
@@ -63,7 +63,7 @@ void HairRenderer::init()
         std::thread loadThread1(hair_loaders::load_neural_hair, m_hair, "resources/models/2000000.ply", m_head, true, true, false);
         loadThread1.detach();
     }
-    #endif
+#endif
 }
 
 void HairRenderer::update()
@@ -87,13 +87,15 @@ void HairRenderer::draw()
     camu.v = m_camera->get_view();
     m_cameraBuffer->cache_data(sizeof(CameraUniforms), &camu);
 
+    glm::vec3 lightViewSpace = camu.v * glm::vec4(m_light.light->get_position(), 1.0f);
+
     // ----- Draw ----
     clearColorDepthBit();
 
     MaterialUniforms headu;
     headu.mat4Types["u_model"] = m_head->get_model_matrix();
     headu.vec3Types["u_skinColor"] = m_headSettings.skinColor;
-    m_light.light->cache_uniforms(headu);
+    headu.vec3Types["u_lightPos"] = lightViewSpace;
     m_head->get_material()->set_uniforms(headu);
 
     m_head->draw();
@@ -106,7 +108,9 @@ void HairRenderer::draw()
     hairu.vec3Types["u_spec2"] = m_hairSettings.specColor2;
     hairu.floatTypes["u_specPwr2"] = m_hairSettings.specPower2;
     hairu.floatTypes["u_thickness"] = m_hairSettings.thickness;
-    m_light.light->cache_uniforms(hairu);
+    hairu.vec3Types["u_lightPos"] = lightViewSpace;
+    hairu.vec3Types["u_camPos"] = m_camera->get_position();
+
     m_hair->get_material()->set_uniforms(hairu);
 
     m_hair->draw(GL_LINES);
@@ -118,7 +122,6 @@ void HairRenderer::draw()
     m_light.dummy->get_material()->set_uniforms(lightu);
 
     m_light.dummy->draw();
-
 }
 
 void HairRenderer::setup_user_interface_frame()

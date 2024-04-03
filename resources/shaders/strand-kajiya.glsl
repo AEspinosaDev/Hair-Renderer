@@ -7,27 +7,22 @@ layout(location = 2) in vec3 tangent;
 layout(location = 3) in vec3 uv;
 layout(location = 4) in vec3 color;
 
-layout (std140) uniform Camera
-{
-    mat4 viewProj;
-    mat4 modelView;
-    mat4 view;
-}u_camera;
 
 uniform mat4 u_model;
-uniform vec3 u_lightPos;
 
-out vec3 v_lightPos;
 out vec3 v_color;
 out vec3 v_tangent;
+out vec3 v_rawTangent;
+
 
 void main() {
 
-    gl_Position = u_camera.viewProj * u_model * vec4(position, 1.0);
+    gl_Position =  u_model * vec4(position, 1.0);
 
-    v_tangent = normalize(mat3(transpose(inverse(u_camera.view*u_model))) * tangent);
+    v_tangent = normalize(mat3(transpose(inverse(u_model))) * tangent);
+    v_rawTangent = tangent;
+
     v_color = color;
-    v_lightPos = (u_camera.view * vec4(u_lightPos,1.0)).xyz;
 
 }
 
@@ -40,21 +35,30 @@ layout(lines) in;
 layout(triangle_strip, max_vertices = 4) out;
 
 in vec3 v_color[];
-in vec3 v_lightPos[];
 in vec3 v_tangent[];
+in vec3 v_rawTangent[];
+
+layout (std140) uniform Camera
+{
+    mat4 viewProj;
+    mat4 modelView;
+    mat4 view;
+
+}u_camera;
 
 out vec3 g_pos;
 out vec3 g_normal;
 out vec2 g_uv;
 out vec3 g_dir;
 out vec3 g_color;
-out vec3 g_lightPos;
 out vec3 g_origin;
 #ifdef NORMAL_MAPPING
 out mat3 g_TBN;
 #endif
 
 uniform float u_thickness;
+uniform vec3 u_camPos;
+uniform mat4 u_model;
 
 void emitQuadPoint(vec4 origin, 
                   vec4 right,
@@ -64,14 +68,13 @@ void emitQuadPoint(vec4 origin,
                   vec2 uv,
                   int id){
   
-        gl_Position  = origin + right * offset;
+        gl_Position =  u_camera.viewProj *(origin + right * offset);
+        g_dir = normalize(mat3(transpose(inverse(u_camera.view*u_model))) * v_rawTangent[id]);
+        g_color = v_color[id];
         g_pos = gl_Position.xyz;
         g_uv = uv;
-        g_color = v_color[id];
-        g_lightPos = v_lightPos[id];
-        g_normal = normal;
-        g_dir = v_tangent[id];
-        g_origin = origin.xyz;
+        g_normal =  normalize(mat3(transpose(inverse(u_camera.view*u_model))) * normal);
+        g_origin = (u_camera.viewProj * origin).xyz; 
 
         //In case of normal mapping
 #ifdef NORMAL_MAPPING
@@ -86,8 +89,8 @@ void main() {
         vec4 startPoint = gl_in[0].gl_Position;
         vec4 endPoint = gl_in[1].gl_Position;
 
-        vec4 view0 = -startPoint;
-        vec4 view1 = -endPoint;
+        vec4 view0 = vec4(u_camPos,1.0)-startPoint;
+        vec4 view1 = vec4(u_camPos,1.0)-endPoint;
 
         vec3 dir0 = v_tangent[0];
         vec3 dir1 = v_tangent[1];
@@ -95,8 +98,8 @@ void main() {
         vec4 right0 = normalize(vec4(cross(dir0.xyz,view0.xyz),0.0));
         vec4 right1 = normalize(vec4(cross(dir1.xyz,view1.xyz),0.0));
 
-        vec3 normal0 = normalize(cross(dir0.xyz,right0.xyz));
-        vec3 normal1 = normalize(cross(dir1.xyz,right1.xyz));
+        vec3 normal0 = normalize(cross(right0.xyz,dir0.xyz));
+        vec3 normal1 = normalize(cross(right1.xyz,dir1.xyz));
 
         float halfLength = u_thickness*0.5;
 
@@ -113,7 +116,6 @@ void main() {
 // #define NORMAL_MAPPING
 
 in vec3 g_color;
-in flat vec3 g_lightPos;
 
 in vec3 g_pos;
 in vec3 g_normal;
@@ -131,7 +133,11 @@ uniform vec3 u_spec2;
 uniform float u_specPwr1;
 uniform float u_specPwr2;
 uniform float u_thickness;
+#ifdef NORMAL_MAPPING
 uniform sampler2D u_normalText;
+#endif
+uniform vec3 u_lightPos;
+
 
 out vec4 FragColor;
 
@@ -149,12 +155,15 @@ void computeNormal(){
     vec3 offsetPos = g_pos + g_normal * (halfLength/offsetMag);
     
     sh_normal = normalize(offsetPos-g_origin);
+    sh_normal =vec3(offsetMag);
+
 }
 #ifdef NORMAL_MAPPING
 void computeNormalFromTexture(){
     vec3 textNormal = texture(u_normalText, g_uv).rgb;
     textNormal = textNormal * 2.0 - 1.0;   
     sh_normal = normalize(g_TBN * textNormal); 
+    
 }
 #endif
 
@@ -180,10 +189,10 @@ float strandSpecular(vec3 T, vec3 V, vec3 L, float exponent){
 
 //Scheuermann / Kajiya. Kay
 vec3 computeLighting(){
-  vec3 L = normalize(g_lightPos- g_pos);
+  vec3 L = normalize(u_lightPos- g_pos);
   vec3 V = normalize(-g_pos);
   vec3 D = normalize(g_dir);
-//   vec3 halfVector = normalize(lightDir + viewDir);
+vec3 halfVector = normalize(L + V);
 
   
 //   float shift = uHasTiltText ? texture(uTiltText,_uv).r : 0.0;
@@ -193,18 +202,23 @@ vec3 computeLighting(){
   // vec3 t1 = shiftTangent(T, N, 0.0 + shift);
   // vec3 t2 = shiftTangent(T,  N, 0.0 + shift);
 
-  vec3 ambient = 0.2*u_albedo;
-  vec3 diffuse = u_albedo*clamp(dot(sh_normal,L),0.0,1.0);
-  // vec3 diffuse = u_albedo;
+  vec3 ambient = u_albedo;
+  // vec3 diffuse = u_albedo*clamp(dot(sh_normal,L),0.0,1.0);
+  // // vec3 diffuse = u_albedo;
 
   
-  vec3 specular = clamp(u_spec1 * strandSpecular(D, V,L, u_specPwr1),0.0,0.3);
+  // vec3 specular = clamp(u_spec1 * strandSpecular(D, V,L, u_specPwr1),0.0,0.3);
   //vec3 specular = vec3(0.0);
+
+  vec3 diffuse = clamp(dot(L, g_normal), 0.0, 1.0) * vec3(1.0,1.0,1.0);
+  vec3 specular = pow(max(dot(g_normal, halfVector), 0.0), 20.0) * 5.0 * vec3(1.0,1.0,1.0);
+  vec3 color =  u_albedo; //surface
+  return (ambient +diffuse ) * color  * 1.0;
     
 //   float highlight = uHasHighlightText ? texture(uHighlightText,_uv).r:1.0;
 //   specular += clamp(u_spec2*highlight* strandSpecular(t2,V,L,uSpecularPower2),0.0,1.0);
     float lightIntensity = 1.0;
-  return ambient+(diffuse)*lightIntensity;//Include lambertian with different 
+  return ambient+((u_albedo+specular)*clamp(dot(sh_normal,L),0.0,1.0))*lightIntensity;//Include lambertian with different 
 
 }
 
@@ -214,6 +228,6 @@ void main() {
     computeNormal();
     FragColor = vec4(computeLighting(), 1.0);
 
-    //  FragColor = vec4(sh_normal, 1.0);
+    FragColor = vec4(sh_normal, 1.0);
 
 }
