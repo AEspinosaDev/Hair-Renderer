@@ -11,28 +11,37 @@ void HairRenderer::init()
 
     m_controller = new Controller(m_camera);
 
-    m_light = new PointLight();
-    m_light->set_position({5.0f, 3.0f, -7.0f});
-
     m_hair = new Mesh();
     m_head = new Mesh();
 
+    m_light.light = new PointLight();
+    m_light.dummy = new Mesh();
+    loaders::load_OBJ(m_light.dummy,"resources/models/sphere.obj");
+    m_light.set_position({3.0f, 2.0f, -3.0f});
+
     const size_t CAMERA_MAT_NUM = 3;
     const size_t NUM_OBJS = 2;
+
     m_cameraBuffer = new UniformBuffer(sizeof(glm::mat4) * CAMERA_MAT_NUM);
     m_cameraBuffer->generate();
 
-    GraphicPipeline hpipeline{};
-    hpipeline.shader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
-    hpipeline.shader->set_uniform_block("Camera", CAMERA_LAYOUT);
-    Material *headMaterial = new Material(hpipeline);
+    GraphicPipeline skinPipeline{};
+    skinPipeline.shader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
+    skinPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
+    Material *headMaterial = new Material(skinPipeline);
     m_head->set_material(headMaterial);
 
-    GraphicPipeline spipeline{};
-    spipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
-    spipeline.shader->set_uniform_block("Camera", CAMERA_LAYOUT);
-    Material *hairMaterial = new Material(spipeline);
+    GraphicPipeline hairPipeline{};
+    hairPipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
+    hairPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
+    Material *hairMaterial = new Material(hairPipeline);
     m_hair->set_material(hairMaterial);
+
+    GraphicPipeline unlitPipeline{};
+    unlitPipeline.shader = new Shader("resources/shaders/unlit.glsl", ShaderType::UNLIT);
+    unlitPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
+    Material *lightMaterial = new Material(unlitPipeline);
+    m_light.dummy->set_material(lightMaterial);
 
 #define YUKSEL
 #ifdef YUKSEL
@@ -84,7 +93,7 @@ void HairRenderer::draw()
     MaterialUniforms headu;
     headu.mat4Types["u_model"] = m_head->get_model_matrix();
     headu.vec3Types["u_skinColor"] = m_headSettings.skinColor;
-    m_light->cache_uniforms(headu);
+    m_light.light->cache_uniforms(headu);
     m_head->get_material()->set_uniforms(headu);
 
     m_head->draw();
@@ -97,10 +106,19 @@ void HairRenderer::draw()
     hairu.vec3Types["u_spec2"] = m_hairSettings.specColor2;
     hairu.floatTypes["u_specPwr2"] = m_hairSettings.specPower2;
     hairu.floatTypes["u_thickness"] = m_hairSettings.thickness;
-    m_light->cache_uniforms(hairu);
+    m_light.light->cache_uniforms(hairu);
     m_hair->get_material()->set_uniforms(hairu);
 
     m_hair->draw(GL_LINES);
+
+    MaterialUniforms lightu;
+    m_light.dummy->set_position(m_light.light->get_position());
+    lightu.mat4Types["u_model"] = m_light.dummy->get_model_matrix();
+    lightu.boolTypes["u_useVertexColor"] = false;
+    m_light.dummy->get_material()->set_uniforms(lightu);
+
+    m_light.dummy->draw();
+
 }
 
 void HairRenderer::setup_user_interface_frame()
@@ -131,7 +149,7 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::ColorEdit3("Skin color", (float *)&m_headSettings.skinColor);
     ImGui::Separator();
     ImGui::SeparatorText("Lighting Settings");
-    gui::draw_transform_widget(m_light);
+    gui::draw_transform_widget(m_light.light);
     ImGui::Separator();
 
     ImGui::End();

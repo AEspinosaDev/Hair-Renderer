@@ -31,7 +31,19 @@ private:
     Mesh *m_hair;
     Mesh *m_head;
 
-    PointLight *m_light;
+    struct LightData
+    {
+        PointLight *light{nullptr};
+        Mesh *dummy{nullptr};
+
+        void set_position(glm::vec3 p)
+        {
+            light->set_position(p);
+            dummy->set_position(p);
+        }
+    };
+
+    LightData m_light{};
 
     //--- Uniform data ---
 
@@ -40,7 +52,7 @@ private:
         CAMERA_LAYOUT = 0,
         OBJECT_LAYOUT = 1
     };
-    
+
     UniformBuffer *m_cameraBuffer;
     UniformBuffer *m_objectBuffer;
 
