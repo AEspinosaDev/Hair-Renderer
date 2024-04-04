@@ -6,16 +6,6 @@
 
 GLIB_NAMESPACE_BEGIN
 
-struct Extent2D
-{
-    int width{0};
-    int height{0};
-};
-struct Position2D
-{
-    int x{0};
-    int y{0};
-};
 struct Window
 {
     Extent2D extent{800, 600};

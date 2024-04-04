@@ -2,11 +2,6 @@
 
 GLIB_NAMESPACE_BEGIN
 
-UniformBuffer::~UniformBuffer()
-{
-    // GL_CHECK(glDeleteBuffers())
-}
-
 void UniformBuffer::generate()
 {
     GL_CHECK(glGenBuffers(1, &m_id));
@@ -20,10 +15,10 @@ void UniformBuffer::generate()
         GL_CHECK(glBindBufferRange(GL_UNIFORM_BUFFER, i, m_id, layout.offset, layout.bytes));
         i++;
     }
+    m_generated = true;
 }
 
-
-void UniformBuffer::cache_data(const size_t sizeInBytes, const void * data, const size_t offset) const
+void UniformBuffer::cache_data(const size_t sizeInBytes, const void *data, const size_t offset) const
 {
     GL_CHECK(glBindBuffer(GL_UNIFORM_BUFFER, m_id));
     glBufferSubData(GL_UNIFORM_BUFFER, offset, sizeInBytes, data);

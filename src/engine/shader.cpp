@@ -168,7 +168,6 @@ unsigned int Shader::create_program(ShaderStageSource source)
 ShaderStageSource Shader::parse_shader(const char *filename)
 {
     const std::string file(filename);
-    // std::ifstream stream("/home/tony/Dev/OpenGL-Hair/resources/shaders/test.glsl");
     std::ifstream stream(file);
 
     if (!stream.is_open())

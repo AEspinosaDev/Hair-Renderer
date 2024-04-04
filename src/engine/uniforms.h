@@ -21,10 +21,15 @@ class UniformBuffer
     std::vector<Layout>
         m_layouts;
 
+    bool m_generated{false};
+
 public:
     UniformBuffer(const size_t sizeInBytes) : BYTES(sizeInBytes), m_layouts({{sizeInBytes, 0}}){};
-    
-    ~UniformBuffer();
+
+    ~UniformBuffer()
+    {
+        GL_CHECK(glDeleteBuffers(1, &m_id))
+    }
 
     void generate();
 
@@ -32,11 +37,10 @@ public:
 
     void unbind() const;
 
-    void cache_data(const size_t sizeInBytes, const void * data, const size_t offset = 0) const;
+    void cache_data(const size_t sizeInBytes, const void *data, const size_t offset = 0) const;
 
+    inline bool is_generated() const { return m_generated; }
 };
-
-
 
 GLIB_NAMESPACE_END
 

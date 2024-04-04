@@ -228,6 +228,6 @@ void main() {
     computeNormal();
     FragColor = vec4(computeLighting(), 1.0);
 
-    FragColor = vec4(sh_normal, 1.0);
+    FragColor = vec4(sh_normal*u_albedo, 1.0);
 
 }

@@ -52,6 +52,10 @@ protected:
 public:
     Mesh() : Object3D("Mesh", {0.0f, 0.0f, 0.0f}, Object3DType::MESH), m_material(nullptr) { Mesh::INSTANCED_MESHES++; }
     Mesh(Geometry &geometry, Material *const material) : Object3D("Mesh", {0.0f, 0.0f, 0.0f}, Object3DType::MESH), m_material(material), m_geometry(geometry) { Mesh::INSTANCED_MESHES++; }
+    ~Mesh(){
+        GL_CHECK(glDeleteVertexArrays(1, &m_vao));
+        delete m_material;
+    }
 
     inline unsigned int get_buffer_id() const { return m_vao; }
     inline bool is_buffer_loaded() const { return m_buffer_loaded; }

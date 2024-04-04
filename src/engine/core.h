@@ -44,6 +44,31 @@ void GLFW_check_error();
 void GLclearError();
 bool GLlogCall(const char *function, const char *file, int line);
 
+struct Extent2D
+{
+    int width{0};
+    int height{0};
+
+	inline bool operator==(Extent2D o){
+		return width == o.width && height == o.height;
+	}
+	inline bool operator!=(Extent2D o){
+		return width != o.width && height != o.height;
+	}
+};
+struct Position2D
+{
+    int x{0};
+    int y{0};
+
+	inline bool operator==(Position2D o){
+		return x == o.x && y == o.y;
+	}
+	inline bool operator!=(Position2D o){
+		return x != o.x && y != o.y;
+	}
+};
+
 typedef enum DepthFuncType
 {
 	NEVER = GL_NEVER,
@@ -76,5 +101,12 @@ typedef enum BlendOperationType
 	MIN = GL_MIN,
 	MAX = GL_MAX,
 } BlendOperationType;
+
+typedef enum TextureType{
+	TEXTURE_2D = GL_TEXTURE_2D,
+	TEXTURE_2D_ARRAY = GL_TEXTURE_2D_ARRAY,
+	TEXTURE_3D = GL_TEXTURE_3D,
+	TEXTURE_CUBEMAP = GL_TEXTURE_CUBE_MAP
+}TextureType;
 
 #endif
