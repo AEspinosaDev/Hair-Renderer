@@ -8,16 +8,63 @@ void Texture::generate()
 
     GL_CHECK(glBindTexture(m_config.type, m_id));
 
-    GL_CHECK(glTexImage2D(
-        m_config.type,
-        m_config.level,
-        m_config.internalFormat,
-        m_extent.width,
-        m_extent.height,
-        m_config.border,
-        m_config.format,
-        m_config.dataType,
-        m_image.data));
+    switch (m_config.type)
+    {
+    case TEXTURE_2D:
+        if (m_config.samples == 1)
+        {
+            GL_CHECK(glTexImage2D(
+                m_config.type,
+                m_config.level,
+                m_config.internalFormat,
+                m_extent.width,
+                m_extent.height,
+                m_config.border,
+                m_config.format,
+                m_config.dataType,
+                m_image.data));
+        }
+        else
+        {
+            GL_CHECK(glTexImage2DMultisample(m_config.type,
+                                             m_config.samples,
+                                             m_config.internalFormat,
+                                             m_extent.width,
+                                             m_extent.height,
+                                             GL_TRUE));
+        }
+        break;
+
+    case TEXTURE_3D || TEXTURE_2D_ARRAY:
+        if (m_config.samples == 1)
+        {
+            GL_CHECK(glTexImage3D(
+                m_config.type,
+                m_config.level,
+                m_config.internalFormat,
+                m_extent.width,
+                m_extent.height,
+                m_config.layers,
+                m_config.border,
+                m_config.format,
+                m_config.dataType,
+                m_image.data));
+        }
+        else
+        {
+            GL_CHECK(glTexImage3DMultisample(m_config.type,
+                                             m_config.samples,
+                                             m_config.internalFormat,
+                                             m_extent.width,
+                                             m_extent.height,
+                                             m_config.layers,
+                                             GL_TRUE));
+        }
+        break;
+    case TEXTURE_CUBEMAP:
+        // TBD...
+        break;
+    }
 
     if (m_config.useMipmaps)
     {
@@ -42,7 +89,7 @@ void Texture::generate()
     m_generated = true;
 }
 
-inline void Texture::set_extent(Extent2D extent)
+void Texture::set_extent(Extent2D extent)
 {
     if (m_generated)
     {

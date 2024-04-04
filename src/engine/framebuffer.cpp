@@ -19,6 +19,7 @@ void Framebuffer::generate()
 
             if (!texture->is_generated())
             {
+                //Update just in case texture key config
                 TextureConfig newConfig = texture->get_config();
                 newConfig.samples = m_samples;
                 texture->set_config(newConfig);

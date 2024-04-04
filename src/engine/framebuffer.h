@@ -41,7 +41,7 @@ public:
     {
         GL_CHECK(glDeleteFramebuffers(1, &m_id));
         // delete m_attachments;
-    }
+    };
     void generate();
 
     inline bool is_generated() const { return m_generated; }
