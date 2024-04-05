@@ -4,7 +4,7 @@
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec3 tangent;
-layout(location = 3) in vec3 uv;
+layout(location = 3) in vec2 uv;
 layout(location = 4) in vec3 color;
 
 layout (binding = 0) uniform Camera
@@ -18,15 +18,24 @@ uniform mat4 u_model;
 
 
 out vec3 _pos;
+out vec3 _modelPos;
 out vec3 _normal;
+out vec2 _uv;
 out vec3 _color;
 
 void main() {
     
-    _pos = (u_camera.modelView * vec4(position, 1.0)).xyz;
+    mat4 modelView = u_camera.view * u_model;
 
-    _normal = normalize(mat3(transpose(inverse(u_camera.modelView))) * normal);
+    _pos = (modelView * vec4(position, 1.0)).xyz;
+
+    _modelPos = (u_model * vec4(position, 1.0)).xyz;
+
+    _normal = normalize(mat3(transpose(inverse(modelView))) * normal);
+
     _color = color;
+
+    _uv = uv;
 
     gl_Position = u_camera.viewProj  * u_model * vec4(position, 1.0);
 
@@ -37,7 +46,9 @@ void main() {
 #version 460 core
 
 in vec3 _pos;
+in vec3 _modelPos;
 in vec3 _normal;
+in vec2 _uv;
 in vec3 _color;
 
 layout (binding = 1) uniform Scene
@@ -45,15 +56,18 @@ layout (binding = 1) uniform Scene
     vec4 ambient;
     vec4 lightPos;
     vec4 lightColor;
+    vec4 shadowConfig;
+    mat4 lightViewProj;
 }u_scene;
 
 uniform vec3 u_albedo;
+uniform sampler2D u_shadowMap;
 
 out vec4 FragColor;
 
 //Surface global properties
 vec3 g_normal = _normal;
-vec3 g_albedo = u_albedo;
+vec3 g_albedo = u_albedo; 
 float g_opacity = 1.0;
 float g_roughness = 0.8;
 float g_metalness = 0.0;
@@ -134,11 +148,51 @@ vec3 computeLighting() {
     return (kD * g_albedo / PI + specular) * radiance * lambertian;
 
 }
+float filterPCF(int kernelSize, vec3 coords, float bias) {
+
+    int edge = kernelSize / 2;
+    vec2 texelSize = 1.0 / textureSize(u_shadowMap, 0);
+
+    float currentDepth = coords.z;
+
+    float shadow = 0.0;
+
+    for(int x = -edge; x <= edge; ++x) {
+        for(int y = -edge; y <= edge; ++y) {
+            float pcfDepth = texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize.xy)).r;
+            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+        }
+    }
+    return shadow /= (kernelSize * kernelSize);
+
+}
+
+float computeShadow(){
+
+    vec4 posLightSpace = u_scene.lightViewProj * vec4(_modelPos, 1.0);
+
+    vec3 projCoords = posLightSpace.xyz / posLightSpace.w;
+
+    projCoords.xy  = projCoords.xy * 0.5 + 0.5;
+
+    if(projCoords.z > 1.0 || projCoords.z < 0.0)
+        return 0.0;
+
+    // // float bias = 0.1;
+    //  vec3 lightDir = scene.type == 0 ? normalize(v_lightPos - v_pos) : normalize(v_lightPos);
+    // float bias = max(0.5 * tan(acos(dot(v_normal, -lightDir))), 0.05);
+
+    // // Apply the bias
+    // bias=  max(bias, 0.5);
+    return filterPCF(int(u_scene.shadowConfig.y), projCoords, u_scene.shadowConfig.x);
+}
 
 
 void main() {
     
     vec3 color = computeLighting();
+    if(int(u_scene.shadowConfig.z)==1) //If light cast shadows
+    color*= 1.0 - computeShadow();
 
     //Ambient component
     const float ambientIntensity = 0.2;

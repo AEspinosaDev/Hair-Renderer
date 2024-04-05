@@ -15,29 +15,31 @@ typedef enum LightType
     AREA
 } LightType;
 
+// Shadows
+struct ShadowConfig
+{
+    bool cast{true};
+    float nearPlane{0.5f};
+    float farPlane{100.0f};
+    float fov{60.0f};
+    glm::vec3 target{0.0f, 0.0f, 0.0f};
+
+    float bias{0.0001f};
+    bool angleDependableBias{false};
+    int pcfKernel{7};
+
+    // Texture *map;
+};
+
 class Light : public Object3D
 {
 protected:
     glm::vec3 m_color;
+
     float m_intensity;
 
-    // Shadows
-    struct Shadow
-    {
-        bool cast{true};
-        float nearPlane{0.5f};
-        float farPlane{100.0f};
-        float fov{45.0f};
-        glm::vec3 target{0.0f, 0.0f, 0.0f};
+    ShadowConfig m_shadowData;
 
-        float bias{0.1f};
-        bool angleDependableBias{false};
-        int pcfKernel{7};
-
-        // Texture *map;
-    };
-
-    Shadow m_shadow;
     const LightType m_lighType;
 
 public:
@@ -51,29 +53,15 @@ public:
     virtual inline float get_intensity() const { return m_intensity; }
     virtual inline void set_intensity(float i) { m_intensity = i; }
 
-    virtual inline bool get_cast_shadows() const { return m_shadow.cast; }
-    virtual inline void set_cast_shadows(bool o) { m_shadow.cast = o; }
+    virtual inline ShadowConfig get_shadow_config() const { return m_shadowData; }
+    virtual inline void set_shadow_config(ShadowConfig data) { m_shadowData = data; }
 
-    virtual inline glm::vec3 get_shadow_target() const { return m_shadow.target; }
-    virtual inline void set_shadow_target(glm::vec3 o) { m_shadow.target = o; }
-
-    virtual inline float get_shadow_near() const { return m_shadow.nearPlane; }
-    virtual inline void set_shadow_near(float n) { m_shadow.nearPlane = n; }
-
-    virtual inline float get_shadow_far() const { return m_shadow.farPlane; }
-    virtual inline void set_shadow_far(float f) { m_shadow.farPlane = f; }
-
-    virtual inline float get_shadow_fov() const { return m_shadow.fov; }
-    virtual inline void set_shadow_fov(float f) { m_shadow.fov = f; }
-
-    virtual inline float get_shadow_bias() const { return m_shadow.bias; }
-    virtual inline void set_shadow_bias(float b) { m_shadow.bias = b; }
-
-    virtual inline int get_shadow_pcf_kernel() const { return m_shadow.pcfKernel; }
-    virtual inline void set_shadow_pcf_kernel(int k) { m_shadow.pcfKernel = k; }
-
-    virtual inline bool get_angle_dependant_bias() const { return m_shadow.angleDependableBias; }
-    virtual inline void set_angle_dependant_bias(bool o) { m_shadow.angleDependableBias = o; }
+    virtual inline bool
+    get_cast_shadows() const
+    {
+        return m_shadowData.cast;
+    }
+    virtual inline void set_cast_shadows(bool o) { m_shadowData.cast = o; }
 
     // Read only
     // virtual const Texture *const get_shadow_map() const { return m_shadow.map; }

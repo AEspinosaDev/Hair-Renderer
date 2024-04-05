@@ -66,13 +66,18 @@ private:
         glm::vec4 ambient;
         glm::vec4 lightPos;
         glm::vec4 lightColor;
+        glm::vec4 shadowConfig;
+        glm::mat4 lightViewProj; 
     };
 
     UniformBuffer *m_cameraUBO;
     UniformBuffer *m_globalUBO;
     UniformBuffer *m_objectUBO;
 
-    //--- Framebuffer data ---
+    //--- Framebuffer and shading data ---
+
+    GraphicPipeline m_depthPipeline{};
+    GraphicPipeline m_strandDepthPipeline{};
 
     Framebuffer *m_shadowFBO;
 
@@ -84,12 +89,18 @@ private:
     HeadSettings m_headSettings{};
 
     void init();
+
     void update();
+
     void draw();
+
     void setup_user_interface_frame();
+
     void setup_window_callbacks();
 
+
     void forward_pass();
+
     void shadow_pass();
 
 #pragma region input

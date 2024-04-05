@@ -71,6 +71,8 @@ struct Position2D
 	}
 };
 
+
+
 typedef enum DepthFuncType
 {
 	NEVER = GL_NEVER,

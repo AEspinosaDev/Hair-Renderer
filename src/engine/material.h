@@ -21,7 +21,7 @@ struct PipelineState
 };
 
 struct GraphicPipeline{
-    Shader* shader;
+    Shader* shader{nullptr};
     PipelineState state{};
 };
 struct MaterialUniforms

@@ -17,12 +17,12 @@ void HairRenderer::init()
     m_floor = new Mesh();
     loaders::load_OBJ(m_floor, "resources/models/plane.obj");
     m_floor->set_scale(10.0f);
-    m_floor->set_position({0.0f,-3.0f,0.0f});
+    m_floor->set_position({0.0f, -4.0f, 0.0f});
 
     m_light.light = new PointLight();
     m_light.dummy = new Mesh();
     loaders::load_OBJ(m_light.dummy, "resources/models/sphere.obj");
-    m_light.set_position({3.0f, 2.0f, -3.0f});
+    m_light.set_position({6.0f, 3.0f, -6.0f});
 
 #pragma endregion
 #pragma region ______________ SHADER PIPELINES______________
@@ -55,6 +55,9 @@ void HairRenderer::init()
     unlitPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
     Material *lightMaterial = new Material(unlitPipeline);
     m_light.dummy->set_material(lightMaterial);
+
+    m_depthPipeline.shader = new Shader("resources/shaders/depth.glsl", ShaderType::UNLIT);
+    m_strandDepthPipeline.shader = new Shader("resources/shaders/strand-depth.glsl", ShaderType::UNLIT);
 
 #pragma endregion
 #pragma region ______________ FRAMEBUFFERS ______________
@@ -116,48 +119,51 @@ void HairRenderer::update()
 void HairRenderer::draw()
 {
 
-#pragma region ______________ SHADOW PASS ______________
-
-    m_shadowFBO->bind();
-    
-    resize_viewport(m_globalSettings.shadowExtent);
-
+    // Setup UBOs
     CameraUniforms camu;
     camu.vp = m_camera->get_projection() * m_camera->get_view();
     camu.mv = m_camera->get_view() * m_head->get_model_matrix();
     camu.v = m_camera->get_view();
     m_cameraUBO->cache_data(sizeof(CameraUniforms), &camu);
 
-    
-
-
-
-
-#pragma endregion
-#pragma region ______________ FORWARD PASS ______________
-
-    Framebuffer::bind_default();
-
-    resize_viewport(m_window.extent);
-
-    camu.vp = m_camera->get_projection() * m_camera->get_view();
-    camu.mv = m_camera->get_view() * m_head->get_model_matrix();
-    camu.v = m_camera->get_view();
-    m_cameraUBO->cache_data(sizeof(CameraUniforms), &camu);
     GlobalUniforms globu;
     globu.ambient = {m_globalSettings.ambientColor,
                      m_globalSettings.ambientStrength};
     glm::vec3 lightViewSpace = camu.v * glm::vec4(m_light.light->get_position(), 1.0f); // Transform to view space
     globu.lightPos = {lightViewSpace, 1.0f};
     globu.lightColor = {m_light.light->get_color(), m_light.light->get_intensity()};
+    ShadowConfig shadow = m_light.light->get_shadow_config();
+    glm::mat4 lp = glm::perspective(glm::radians(shadow.fov),
+                                    1.0f,
+                                    shadow.nearPlane,
+                                    shadow.farPlane);
+    glm::mat4 lv = glm::lookAt(m_light.light->get_position(), shadow.target, glm::vec3(0, 1, 0));
+    globu.shadowConfig = {shadow.bias, shadow.pcfKernel, shadow.cast, 0.0f};
+    globu.lightViewProj = lp * lv;
     m_globalUBO->cache_data(sizeof(GlobalUniforms), &globu);
 
-    // ----- Draw ----
+    if (m_light.light->get_cast_shadows())
+        shadow_pass();
+
+    forward_pass();
+}
+
+#pragma region ______________ FORWARD PASS ______________
+void HairRenderer::forward_pass()
+{
+    Framebuffer::bind_default();
     Framebuffer::clear_color_depth_bit();
+
+    resize_viewport(m_window.extent);
+
+    // ----- Draw ----
+
+    m_shadowFBO->get_attachments().front().texture->bind(0);
 
     MaterialUniforms headu;
     headu.mat4Types["u_model"] = m_head->get_model_matrix();
     headu.vec3Types["u_albedo"] = m_headSettings.skinColor;
+    headu.intTypes["u_shadowMap"] = 0;
     m_head->get_material()->set_uniforms(headu);
 
     m_head->draw();
@@ -187,12 +193,44 @@ void HairRenderer::draw()
     MaterialUniforms flooru;
     flooru.mat4Types["u_model"] = m_floor->get_model_matrix();
     flooru.vec3Types["u_albedo"] = glm::vec3(1.0);
+    flooru.vec3Types["u_albedo"] = glm::vec3(1.0);
+    flooru.intTypes["u_shadowMap"] = 0;
     m_floor->get_material()->set_uniforms(flooru);
 
     m_floor->draw();
 
-#pragma endregion
+    m_shadowFBO->get_attachments().front().texture->unbind();
 }
+#pragma endregion
+
+#pragma region ______________ SHADOW PASS ______________
+void HairRenderer::shadow_pass()
+{
+
+    m_shadowFBO->bind();
+    Framebuffer::clear_depth_bit();
+
+    resize_viewport(m_globalSettings.shadowExtent);
+
+    m_depthPipeline.shader->bind();
+
+    m_depthPipeline.shader->set_mat4("u_model", m_head->get_model_matrix());
+    m_head->draw(false);
+
+    m_depthPipeline.shader->set_mat4("u_model", m_floor->get_model_matrix());
+    m_floor->draw(false);
+
+
+    // m_strandDepthPipeline.shader->bind();
+
+    m_depthPipeline.shader->set_mat4("u_model", m_hair->get_model_matrix());
+
+    m_hair->draw(false, GL_LINES);
+    m_depthPipeline.shader->unbind();
+
+    // m_strandDepthPipeline.shader->unbind();
+}
+#pragma endregion
 
 void HairRenderer::setup_user_interface_frame()
 {
@@ -224,16 +262,7 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::SeparatorText("Lighting Settings");
     ImGui::ColorEdit3("Ambient color", (float *)&m_globalSettings.ambientColor);
     ImGui::DragFloat("Ambient intensity", &m_globalSettings.ambientStrength, 0.1f, 0.0f, 10.0f);
-    float pointIntensity = m_light.light->get_intensity();
-    if (ImGui::DragFloat("Point intensity", &pointIntensity, 0.1f, 0.0f, 10.0f))
-    {
-        m_light.light->set_intensity(pointIntensity);
-    };
-    glm::vec3 pointColor = m_light.light->get_color();
-    if (ImGui::ColorEdit3("Point color", (float *)&pointColor))
-    {
-        m_light.light->set_color(pointColor);
-    };
+    gui::draw_light_widget(m_light.light);
     gui::draw_transform_widget(m_light.light);
 
     ImGui::Separator();

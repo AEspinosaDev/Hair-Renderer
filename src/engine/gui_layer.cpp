@@ -60,6 +60,53 @@ void gui::draw_light_widget(Light *l)
     {
         l->set_cast_shadows(castShadows);
     };
+    if (castShadows)
+    {
+        ShadowConfig shadow = l->get_shadow_config();
+
+        float shadowNear = shadow.nearPlane;
+        if (ImGui::DragFloat("Shadow Near Plane", &shadowNear, 0.005f, 0.0f, 10.0f))
+        {
+            shadow.nearPlane = shadowNear;
+            l->set_shadow_config(shadow);
+        }
+        float shadowFar = shadow.farPlane;
+        if (ImGui::DragFloat("Shadow Far Plane", &shadowFar, 1.0f, 10.0f, 1000.0f))
+        {
+
+            shadow.farPlane = shadowFar;
+            l->set_shadow_config(shadow);
+        }
+        float shadowFov = shadow.fov;
+        if (ImGui::DragFloat("Shadow FOV", &shadowFov, 1.0f, 0.0f, 160.0f))
+        {
+
+            shadow.fov = shadowFov;
+            l->set_shadow_config(shadow);
+        }
+        float position[3] = {shadow.target.x,
+                             shadow.target.y,
+                             shadow.target.z};
+        if (ImGui::DragFloat3("Shadow Target", position, 0.1f))
+        {
+            shadow.target = glm::vec3(position[0], position[1], position[2]);
+            l->set_shadow_config(shadow);
+        };
+        ImGui::Text("Advanced Shadow Settings:");
+        float bias = shadow.bias;
+        if (ImGui::DragFloat("Shadow Bias", &bias, 0.0001f, 0.0f, 1.0f))
+        {
+            shadow.bias = bias;
+            l->set_shadow_config(shadow);
+        }
+
+        int kernel = shadow.pcfKernel;
+        if (ImGui::DragInt("PC Filter Kernel", &kernel, 2, 3, 15))
+        {
+            shadow.pcfKernel = kernel;
+            l->set_shadow_config(shadow);
+        }
+    }
 
     ImGui::Spacing();
     ImGui::Separator();
