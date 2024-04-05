@@ -20,6 +20,8 @@
 		__builtin_trap();
 #endif
 
+
+
 #define GL_CHECK(x) \
 	GLclearError(); \
 	x;              \

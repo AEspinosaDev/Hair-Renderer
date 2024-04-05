@@ -14,30 +14,34 @@ void HairRenderer::init()
     m_hair = new Mesh();
     m_head = new Mesh();
 
+    m_floor = new Mesh();
+    loaders::load_OBJ(m_floor, "resources/models/plane.obj");
+    m_floor->set_scale(10.0f);
+    m_floor->set_position({0.0f,-3.0f,0.0f});
+
     m_light.light = new PointLight();
     m_light.dummy = new Mesh();
     loaders::load_OBJ(m_light.dummy, "resources/models/sphere.obj");
     m_light.set_position({3.0f, 2.0f, -3.0f});
 
-
 #pragma endregion
 #pragma region ______________ SHADER PIPELINES______________
 
     // Uniform buffers
-    const size_t CAMERA_MAT_NUM = 3;
-    m_cameraUBO = new UniformBuffer(sizeof(glm::mat4) * CAMERA_MAT_NUM, UBOLayout::CAMERA_LAYOUT);
+    m_cameraUBO = new UniformBuffer(sizeof(CameraUniforms), UBOLayout::CAMERA_LAYOUT);
     m_cameraUBO->generate();
 
-    const size_t SCENE_ITEM_NUM = 3;
-    m_globalUBO = new UniformBuffer(sizeof(glm::vec4) * SCENE_ITEM_NUM, UBOLayout::GLOBAL_LAYOUT);
+    m_globalUBO = new UniformBuffer(sizeof(GlobalUniforms), UBOLayout::GLOBAL_LAYOUT);
     m_globalUBO->generate();
 
-    GraphicPipeline skinPipeline{};
-    skinPipeline.shader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
-    skinPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
-    skinPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
-    Material *headMaterial = new Material(skinPipeline);
+    GraphicPipeline litPipeline{};
+    litPipeline.shader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
+    litPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
+    litPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
+    Material *headMaterial = new Material(litPipeline);
     m_head->set_material(headMaterial);
+    Material *floorMaterial = new Material(litPipeline);
+    m_floor->set_material(floorMaterial);
 
     GraphicPipeline hairPipeline{};
     hairPipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
@@ -53,10 +57,28 @@ void HairRenderer::init()
     m_light.dummy->set_material(lightMaterial);
 
 #pragma endregion
+#pragma region ______________ FRAMEBUFFERS ______________
 
     // Creating the shadow pass buffer
-    //  m_shadowFBO = new
-#pragma region ______________ FRAMEBUFFERS ______________
+
+    TextureConfig depthConfig{};
+    depthConfig.format = GL_DEPTH_COMPONENT;
+    depthConfig.internalFormat = GL_DEPTH_COMPONENT16;
+    depthConfig.dataType = GL_FLOAT;
+    depthConfig.anisotropicFilter = false;
+    depthConfig.magFilter = GL_NEAREST;
+    depthConfig.minFilter = GL_NEAREST;
+    // depthConfig.useMipmaps = false;
+    depthConfig.wrapS = GL_CLAMP_TO_BORDER;
+    depthConfig.wrapT = GL_CLAMP_TO_BORDER;
+    depthConfig.borderColor = glm::vec4(1.0f);
+
+    Attachment depthAttachment{};
+    depthAttachment.texture = new Texture(m_globalSettings.shadowExtent, depthConfig);
+    depthAttachment.attachmentType = GL_DEPTH_ATTACHMENT;
+
+    m_shadowFBO = new Framebuffer(m_globalSettings.shadowExtent, {depthAttachment});
+    m_shadowFBO->generate();
 
 #pragma endregion
 
@@ -93,46 +115,49 @@ void HairRenderer::update()
 
 void HairRenderer::draw()
 {
-#pragma region ______________ UNIFORM BUFFER UPDATE ______________
-    // ---- Update global uniform buffers ----
-    struct CameraUniforms
-    {
-        glm::mat4 vp;
-        glm::mat4 mv;
-        glm::mat4 v;
-    };
+
+#pragma region ______________ SHADOW PASS ______________
+
+    m_shadowFBO->bind();
+    
+    resize_viewport(m_globalSettings.shadowExtent);
+
     CameraUniforms camu;
     camu.vp = m_camera->get_projection() * m_camera->get_view();
     camu.mv = m_camera->get_view() * m_head->get_model_matrix();
     camu.v = m_camera->get_view();
     m_cameraUBO->cache_data(sizeof(CameraUniforms), &camu);
 
-    struct GlobalUniforms
-    {
-        glm::vec4 ambient;
-        glm::vec4 lightPos;
-        glm::vec4 lightColor;
-    };
-    GlobalUniforms globu;
-    globu.ambient = {m_globalSettings.ambientColor,
-                     m_globalSettings.ambientStrength};
-    glm::vec3 lightViewSpace = camu.v * glm::vec4(m_light.light->get_position(), 1.0f); //Transform to view space
-    globu.lightPos = {lightViewSpace, 1.0f};
-    globu.lightColor = {m_light.light->get_color(), m_light.light->get_intensity()};
-    m_globalUBO->cache_data(sizeof(GlobalUniforms), &globu);
+    
 
-#pragma endregion
-#pragma region ______________ SHADOW PASS ______________
+
+
 
 #pragma endregion
 #pragma region ______________ FORWARD PASS ______________
+
+    Framebuffer::bind_default();
+
+    resize_viewport(m_window.extent);
+
+    camu.vp = m_camera->get_projection() * m_camera->get_view();
+    camu.mv = m_camera->get_view() * m_head->get_model_matrix();
+    camu.v = m_camera->get_view();
+    m_cameraUBO->cache_data(sizeof(CameraUniforms), &camu);
+    GlobalUniforms globu;
+    globu.ambient = {m_globalSettings.ambientColor,
+                     m_globalSettings.ambientStrength};
+    glm::vec3 lightViewSpace = camu.v * glm::vec4(m_light.light->get_position(), 1.0f); // Transform to view space
+    globu.lightPos = {lightViewSpace, 1.0f};
+    globu.lightColor = {m_light.light->get_color(), m_light.light->get_intensity()};
+    m_globalUBO->cache_data(sizeof(GlobalUniforms), &globu);
 
     // ----- Draw ----
     Framebuffer::clear_color_depth_bit();
 
     MaterialUniforms headu;
     headu.mat4Types["u_model"] = m_head->get_model_matrix();
-    headu.vec3Types["u_skinColor"] = m_headSettings.skinColor;
+    headu.vec3Types["u_albedo"] = m_headSettings.skinColor;
     m_head->get_material()->set_uniforms(headu);
 
     m_head->draw();
@@ -149,7 +174,7 @@ void HairRenderer::draw()
 
     m_hair->get_material()->set_uniforms(hairu);
 
-    m_hair->draw(GL_LINES);
+    m_hair->draw(true, GL_LINES);
 
     MaterialUniforms dummyu;
     m_light.dummy->set_position(m_light.light->get_position());
@@ -158,6 +183,13 @@ void HairRenderer::draw()
     m_light.dummy->get_material()->set_uniforms(dummyu);
 
     m_light.dummy->draw();
+
+    MaterialUniforms flooru;
+    flooru.mat4Types["u_model"] = m_floor->get_model_matrix();
+    flooru.vec3Types["u_albedo"] = glm::vec3(1.0);
+    m_floor->get_material()->set_uniforms(flooru);
+
+    m_floor->draw();
 
 #pragma endregion
 }

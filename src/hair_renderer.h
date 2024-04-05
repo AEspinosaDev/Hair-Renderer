@@ -31,6 +31,7 @@ private:
 
     Mesh *m_hair;
     Mesh *m_head;
+    Mesh *m_floor;
 
     struct LightData
     {
@@ -54,6 +55,18 @@ private:
         GLOBAL_LAYOUT = 1,
         OBJECT_LAYOUT = 2
     };
+    struct CameraUniforms
+    {
+        glm::mat4 vp;
+        glm::mat4 mv;
+        glm::mat4 v;
+    };
+    struct GlobalUniforms
+    {
+        glm::vec4 ambient;
+        glm::vec4 lightPos;
+        glm::vec4 lightColor;
+    };
 
     UniformBuffer *m_cameraUBO;
     UniformBuffer *m_globalUBO;
@@ -61,7 +74,7 @@ private:
 
     //--- Framebuffer data ---
 
-    Framebuffer* m_shadowFBO;
+    Framebuffer *m_shadowFBO;
 
     //--- Settings ---
 
@@ -75,6 +88,9 @@ private:
     void draw();
     void setup_user_interface_frame();
     void setup_window_callbacks();
+
+    void forward_pass();
+    void shadow_pass();
 
 #pragma region input
     void key_callback(GLFWwindow *w, int a, int b, int c, int d)
@@ -102,7 +118,7 @@ private:
     void resize_callback(GLFWwindow *w, int width, int height)
     {
         m_camera->set_projection(width, height);
-        resize(0, 0, width, height);
+        resize({width, height});
     }
 
 #pragma endregion

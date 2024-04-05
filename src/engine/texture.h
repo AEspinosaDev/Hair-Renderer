@@ -28,6 +28,8 @@ struct TextureConfig
     int wrapT{GL_REPEAT};
     int wrapS{GL_REPEAT};
     int wrapR{GL_REPEAT};
+
+    glm::vec4 borderColor{glm::vec4(0.0f)};
 };
 struct Image
 {

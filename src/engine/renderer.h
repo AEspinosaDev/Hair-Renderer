@@ -116,10 +116,14 @@ public:
     /*
     Use as callback
     */
-    inline virtual void resize(int x, int y, int w, int h)
+    inline virtual void resize(Extent2D extent, Position2D origin = {0, 0})
     {
-        GL_CHECK(glViewport(0, 0, w, h));
-        m_window.extent = {w, h};
+        m_window.extent = extent;
+        resize_viewport(extent,origin);
+    }
+    inline virtual void resize_viewport(Extent2D extent, Position2D origin = {0, 0})
+    {
+        GL_CHECK(glViewport(origin.x, origin.y, extent.width, extent.height));
     }
 #pragma endregion
 #pragma region user_interface

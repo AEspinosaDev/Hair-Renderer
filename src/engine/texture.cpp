@@ -82,6 +82,8 @@ void Texture::setup() const
     GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_WRAP_T, m_config.wrapT));
     GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_WRAP_S, m_config.wrapS));
 
+    GL_CHECK(glTexParameterfv(m_config.type, GL_TEXTURE_BORDER_COLOR, (float*)&m_config.borderColor));
+
     if (m_config.anisotropicFilter)
     {
 

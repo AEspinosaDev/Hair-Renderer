@@ -70,7 +70,7 @@ public:
 
     virtual void generate_buffers();
 
-    virtual void draw(GLenum drawingPrimitive = GL_TRIANGLES);
+    virtual void draw(bool useMaterial = true, unsigned int drawingPrimitive = GL_TRIANGLES);
 
     inline static int get_number_of_instances() { return INSTANCED_MESHES; }
 };

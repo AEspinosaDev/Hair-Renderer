@@ -47,13 +47,13 @@ layout (binding = 1) uniform Scene
     vec4 lightColor;
 }u_scene;
 
-uniform vec3 u_skinColor;
+uniform vec3 u_albedo;
 
 out vec4 FragColor;
 
 //Surface global properties
 vec3 g_normal = _normal;
-vec3 g_albedo = u_skinColor;
+vec3 g_albedo = u_albedo;
 float g_opacity = 1.0;
 float g_roughness = 0.8;
 float g_metalness = 0.0;

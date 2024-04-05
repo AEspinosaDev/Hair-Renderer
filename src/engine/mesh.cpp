@@ -61,12 +61,12 @@ void Mesh::generate_buffers()
     m_buffer_loaded = true;
 }
 
-void Mesh::draw(GLenum drawingPrimitive)
+void Mesh::draw(bool useMaterial ,unsigned int drawingPrimitive)
 {
     if (m_enabled && m_buffer_loaded)
     {
 
-        if (m_material)
+        if (m_material && useMaterial)
         {
             m_material->get_pipeline().shader->bind();
             m_material->setup_pipeline();
@@ -85,7 +85,7 @@ void Mesh::draw(GLenum drawingPrimitive)
             GL_CHECK(glDrawArrays(drawingPrimitive, 0, m_geometry.vertices.size()));
         }
 
-        if (m_material)
+        if (m_material && useMaterial)
         {
             m_material->get_pipeline().shader->unbind();
         }

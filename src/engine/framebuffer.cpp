@@ -15,7 +15,10 @@ void Framebuffer::generate()
             Texture *texture = attachment.texture;
 
             if (!texture)
-                ASSERT("No instance of texture in framebuffer attachment! Either previously create the instance or turn true -isRenderbuffer- option");
+            {
+                ERR_LOG("ERROR::FRAMEBUFFER::No instance of texture in framebuffer attachment! Either previously create the instance or turn true -isRenderbuffer- option");
+                ASSERT(texture);
+            }
 
             if (!texture->is_generated())
             {
@@ -29,9 +32,9 @@ void Framebuffer::generate()
             else
             {
                 if (texture->get_extent() != m_extent)
-                    ASSERT("Texture extent does not match framebuffer extent!");
+                    ERR_LOG("ERROR::FRAMEBUFFER::Texture extent does not match framebuffer extent!");
                 if (texture->get_config().samples != m_samples)
-                    ASSERT("Texture sample count does not match framebuffer sample count!");
+                    ERR_LOG("ERROR::FRAMEBUFFER::Texture sample count does not match framebuffer sample count!");
             }
 
             TextureType type = texture->get_config().type;
@@ -56,8 +59,10 @@ void Framebuffer::generate()
 
             Renderbuffer *renderbuffer = attachment.renderbuffer;
 
-            if (!renderbuffer)
-                ASSERT("No instance of renderbuffer in framebuffer attachment! Either previously create the instance or turn false -isRenderbuffer- option");
+            if (!renderbuffer){
+                ERR_LOG("No instance of renderbuffer in framebuffer attachment! Either previously create the instance or turn false -isRenderbuffer- option");
+                ASSERT(renderbuffer);
+            }
 
             if (!renderbuffer->is_generated())
                 renderbuffer->generate();
