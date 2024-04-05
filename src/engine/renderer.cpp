@@ -43,8 +43,8 @@ void Renderer::init()
 {
     setup_window_callbacks();
 
-    enableDepthTest(m_settings.depthTest);
-    enableDepthWrites(m_settings.depthWrites);
+    Framebuffer::enable_depth_test(m_settings.depthTest);
+    Framebuffer::enable_depth_writes(m_settings.depthWrites);
 
     if (m_settings.userInterface)
     {

@@ -90,7 +90,7 @@ class PointLight : public Light
     static int INSTANCED_POINT_LIGHTS;
 
 public:
-    PointLight(glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f), float intensity = 0.1f) : Light("Point Light", LightType::POINT, color, intensity), m_effectArea(12.0f), m_decaying(1.0f) { PointLight::INSTANCED_POINT_LIGHTS++; }
+    PointLight(glm::vec3 color = glm::vec3(1.0f, 1.0f, 1.0f), float intensity = 1.0f) : Light("Point Light", LightType::POINT, color, intensity), m_effectArea(12.0f), m_decaying(1.0f) { PointLight::INSTANCED_POINT_LIGHTS++; }
 
     inline float get_area_of_effect() const { return m_effectArea; }
     inline void set_area_of_effect(float a) { m_effectArea = a; }

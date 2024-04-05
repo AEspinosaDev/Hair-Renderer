@@ -20,11 +20,12 @@ class UniformBuffer
 
     std::vector<Layout>
         m_layouts;
+    size_t m_layoutBinding;
 
     bool m_generated{false};
 
 public:
-    UniformBuffer(const size_t sizeInBytes) : BYTES(sizeInBytes), m_layouts({{sizeInBytes, 0}}){};
+    UniformBuffer(const size_t sizeInBytes, const size_t layoutBinding = 0) : BYTES(sizeInBytes), m_layouts({{sizeInBytes, 0}}), m_layoutBinding(layoutBinding){};
 
     ~UniformBuffer()
     {

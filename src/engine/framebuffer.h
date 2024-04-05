@@ -8,6 +8,9 @@ GLIB_NAMESPACE_BEGIN
 
 class Renderbuffer; // Definition on the bottom
 
+/*
+Framebuffer attachment data
+*/
 struct Attachment
 {
     // Necessary data for texture based attachment
@@ -42,6 +45,24 @@ public:
         GL_CHECK(glDeleteFramebuffers(1, &m_id));
         // delete m_attachments;
     };
+
+    inline unsigned int get_id() const { return m_id; }
+
+    inline Extent2D get_extent() const { return m_extent; }
+
+    void set_extent(Extent2D extent);
+
+    inline bool get_resizable() const { return m_resizable; }
+
+    inline void set_resizable(bool o) { m_resizable = o; }
+
+    void resize(Extent2D extent);
+
+    std::vector<Attachment> get_attachments() const { return m_attachments; }
+
+    /*
+    Generates the OpenGl FBO
+    */
     void generate();
 
     inline bool is_generated() const { return m_generated; }
@@ -49,6 +70,28 @@ public:
     void bind() const;
 
     void unbind() const;
+
+    /*
+    Copy framebuffer data to the given framebuffer. If framebuffer pointer is set to null,
+    it will copy it to the defalt framebuffer
+    */
+    void blit(const Framebuffer *const dst, unsigned int mask, unsigned int filter,
+              Extent2D srcExtent, Extent2D dstExtent,
+              Position2D srcOrigin = {0, 0}, Position2D dstOrigin = {0, 0}) const;
+
+    static void bind_default();
+
+    static void clear_color_bit();
+
+    static void clear_color_depth_bit();
+
+    static void clear_depth_bit();
+
+    static void clear_bits(unsigned int bits = GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BITS);
+
+    static void enable_depth_test(bool op);
+
+    static void enable_depth_writes(bool op);
 };
 
 class Renderbuffer
@@ -66,6 +109,9 @@ public:
         GL_CHECK(glDeleteRenderbuffers(1, &m_id));
     };
 
+    /*
+    Generates the OpenGL RB0
+    */
     void generate();
 
     inline unsigned int get_id() const { return m_id; }

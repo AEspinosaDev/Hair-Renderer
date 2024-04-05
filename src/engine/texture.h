@@ -48,6 +48,8 @@ protected:
 
     bool m_generated{false};
 
+    void setup() const;
+
 public:
     Texture(Extent2D extent) : m_extent(extent) {}
     Texture(Extent2D extent, TextureConfig config) : m_extent(extent), m_config(config) {}

@@ -12,7 +12,7 @@ void UniformBuffer::generate()
     size_t i = 0;
     for (Layout &layout : m_layouts)
     {
-        GL_CHECK(glBindBufferRange(GL_UNIFORM_BUFFER, i, m_id, layout.offset, layout.bytes));
+        GL_CHECK(glBindBufferRange(GL_UNIFORM_BUFFER, m_layoutBinding + i, m_id, layout.offset, layout.bytes));
         i++;
     }
     m_generated = true;

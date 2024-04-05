@@ -38,7 +38,7 @@ in vec3 v_color[];
 in vec3 v_tangent[];
 in vec3 v_rawTangent[];
 
-layout (std140) uniform Camera
+layout (binding = 0) uniform Camera
 {
     mat4 viewProj;
     mat4 modelView;
@@ -126,6 +126,13 @@ in vec3 g_origin;
 in mat3 g_TBN;
 #endif
 
+layout (binding = 1) uniform Scene
+{
+    vec4 ambient;
+    vec4 lightPos;
+    vec4 lightColor;
+}u_scene;
+
 // ---Hair--
 uniform vec3 u_albedo;
 uniform vec3 u_spec1;
@@ -136,7 +143,6 @@ uniform float u_thickness;
 #ifdef NORMAL_MAPPING
 uniform sampler2D u_normalText;
 #endif
-uniform vec3 u_lightPos;
 
 
 out vec4 FragColor;
@@ -189,7 +195,7 @@ float strandSpecular(vec3 T, vec3 V, vec3 L, float exponent){
 
 //Scheuermann / Kajiya. Kay
 vec3 computeLighting(){
-  vec3 L = normalize(u_lightPos- g_pos);
+  vec3 L = normalize(u_scene.lightPos.xyz- g_pos);
   vec3 V = normalize(-g_pos);
   vec3 D = normalize(g_dir);
 vec3 halfVector = normalize(L + V);
@@ -217,8 +223,7 @@ vec3 halfVector = normalize(L + V);
     
 //   float highlight = uHasHighlightText ? texture(uHighlightText,_uv).r:1.0;
 //   specular += clamp(u_spec2*highlight* strandSpecular(t2,V,L,uSpecularPower2),0.0,1.0);
-    float lightIntensity = 1.0;
-  return ambient+((u_albedo+specular)*clamp(dot(sh_normal,L),0.0,1.0))*lightIntensity;//Include lambertian with different 
+  return ambient+((u_albedo+specular)*clamp(dot(sh_normal,L),0.0,1.0))*u_scene.lightColor.w;//Include lambertian with different 
 
 }
 

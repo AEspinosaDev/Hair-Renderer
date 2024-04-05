@@ -13,6 +13,7 @@
 #include "engine/light.h"
 #include "engine/gui_layer.h"
 #include "engine/uniforms.h"
+#include "engine/framebuffer.h"
 #include "engine/renderer.h"
 
 #include "settings.h"
@@ -50,11 +51,17 @@ private:
     enum UBOLayout
     {
         CAMERA_LAYOUT = 0,
-        OBJECT_LAYOUT = 1
+        GLOBAL_LAYOUT = 1,
+        OBJECT_LAYOUT = 2
     };
 
-    UniformBuffer *m_cameraBuffer;
-    UniformBuffer *m_objectBuffer;
+    UniformBuffer *m_cameraUBO;
+    UniformBuffer *m_globalUBO;
+    UniformBuffer *m_objectUBO;
+
+    //--- Framebuffer data ---
+
+    Framebuffer* m_shadowFBO;
 
     //--- Settings ---
 

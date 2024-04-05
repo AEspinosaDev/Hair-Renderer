@@ -6,6 +6,12 @@ void Texture::generate()
 {
     GL_CHECK(glGenTextures(1, &m_id));
 
+    setup();
+
+    m_generated = true;
+}
+void Texture::setup() const
+{
     GL_CHECK(glBindTexture(m_config.type, m_id));
 
     switch (m_config.type)
@@ -85,18 +91,11 @@ void Texture::generate()
     }
 
     GL_CHECK(glBindTexture(m_config.type, 0));
-
-    m_generated = true;
 }
 
 void Texture::set_extent(Extent2D extent)
 {
-    if (m_generated)
-    {
-        resize(extent);
-    }
-    else
-        m_extent = extent;
+    resize(extent);
 }
 
 void Texture::bind(unsigned int slot) const
@@ -113,20 +112,8 @@ void Texture::unbind() const
 void Texture::resize(Extent2D extent)
 {
     m_extent = extent;
-
-    GL_CHECK(glBindTexture(m_config.type, m_id));
-
-    GL_CHECK(glTexImage2D(m_config.type, m_config.level, m_config.internalFormat, m_extent.width, m_extent.height, m_config.border, m_config.format,
-                          m_config.type, m_image.data));
-
-    GL_CHECK(glBindTexture(m_config.type, 0));
-
-    // }
-    // else {
-    // 	GLcall(glBindTexture(GL_TEXTURE_2D_MULTISAMPLE, m_RendererID));
-    // 	GLcall(glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, m_Samples, m_TextConfig.internalFormat, m_Width, m_Height,
-    // 		GL_TRUE));
-    // }
+    if (m_generated)
+        setup();
 }
 
 GLIB_NAMESPACE_END

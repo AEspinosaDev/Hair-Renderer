@@ -19,7 +19,7 @@ void Framebuffer::generate()
 
             if (!texture->is_generated())
             {
-                //Update just in case texture key config
+                // Update just in case texture key config
                 TextureConfig newConfig = texture->get_config();
                 newConfig.samples = m_samples;
                 texture->set_config(newConfig);
@@ -86,9 +86,16 @@ void Framebuffer::generate()
 }
 void Framebuffer::bind() const
 {
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, m_id));
 }
 void Framebuffer::unbind() const
 {
+    Framebuffer::bind_default();
+}
+
+void Framebuffer::bind_default()
+{
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
 }
 void Renderbuffer::generate()
 {
@@ -103,6 +110,83 @@ void Renderbuffer::bind() const
 void Renderbuffer::unbind() const
 {
     GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, 0));
+}
+
+void Framebuffer::set_extent(Extent2D extent)
+{
+    resize(extent);
+}
+
+void Framebuffer::resize(Extent2D extent)
+{
+    m_extent = extent;
+
+    if (m_generated)
+    {
+        for (Attachment &attachment : m_attachments)
+        {
+            if (!attachment.isRenderbuffer && attachment.texture)
+            {
+                attachment.texture->resize(extent);
+            }
+            else if (attachment.renderbuffer && attachment.renderbuffer)
+            {
+                attachment.renderbuffer->bind();
+                if (m_samples == 1)
+                {
+                    GL_CHECK(glRenderbufferStorage(GL_RENDERBUFFER, attachment.renderbuffer->get_internal_format(), m_extent.width, m_extent.height));
+                }
+                else
+                    GL_CHECK(glRenderbufferStorageMultisample(GL_RENDERBUFFER, m_samples, attachment.renderbuffer->get_internal_format(), m_extent.width, m_extent.height));
+
+                GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment.attachmentType, GL_RENDERBUFFER, attachment.renderbuffer->get_id()));
+
+                attachment.renderbuffer->unbind();
+            }
+        }
+    }
+}
+
+void Framebuffer::blit(const Framebuffer *const dst, unsigned int mask, unsigned int filter,
+                       Extent2D srcExtent, Extent2D dstExtent,
+                       Position2D srcOrigin, Position2D dstOrigin) const
+{
+    GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER, m_id));
+    GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst ? dst->get_id() : 0));
+
+    GL_CHECK(glBlitFramebuffer(srcOrigin.x, srcOrigin.y, srcExtent.width, srcExtent.height,
+                               dstOrigin.x, dstOrigin.y, dstExtent.width, dstExtent.height,
+                               mask, filter));
+}
+
+void Framebuffer::clear_color_bit()
+{
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+}
+
+void Framebuffer::clear_color_depth_bit()
+{
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+}
+
+void Framebuffer::clear_depth_bit()
+{
+    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
+}
+
+void Framebuffer::clear_bits(unsigned int bits)
+{
+    GL_CHECK(glClear(bits));
+}
+
+void Framebuffer::enable_depth_test(bool op)
+{
+    op ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
+}
+
+void Framebuffer::enable_depth_writes(bool op)
+{
+    GL_CHECK(glDepthMask(op));
 }
 
 GLIB_NAMESPACE_END

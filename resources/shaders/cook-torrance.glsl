@@ -7,7 +7,7 @@ layout(location = 2) in vec3 tangent;
 layout(location = 3) in vec3 uv;
 layout(location = 4) in vec3 color;
 
-layout (std140) uniform Camera
+layout (binding = 0) uniform Camera
 {
     mat4 viewProj;
     mat4 modelView;
@@ -40,8 +40,14 @@ in vec3 _pos;
 in vec3 _normal;
 in vec3 _color;
 
+layout (binding = 1) uniform Scene
+{
+    vec4 ambient;
+    vec4 lightPos;
+    vec4 lightColor;
+}u_scene;
+
 uniform vec3 u_skinColor;
-uniform vec3 u_lightPos;
 
 out vec4 FragColor;
 
@@ -99,17 +105,16 @@ float geometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
 vec3 computeLighting() {
 
     //Vector setup
-    vec3 lightDir = normalize(u_lightPos - _pos);
+    vec3 lightDir = normalize(u_scene.lightPos.xyz - _pos);
     vec3 viewDir = normalize(-_pos);
-    vec3 halfVector = normalize(lightDir + viewDir); //normalize(viewDir + lightDir);
+    vec3 halfVector = normalize(lightDir + viewDir); 
 
 	//Heuristic fresnel factor
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, g_albedo, g_metalness);
 
 	//Radiance
-    // vec3 radiance = light.color * computeAttenuation(light) * light.intensity;
-    vec3 radiance = vec3(1.0) ;
+    vec3 radiance = u_scene.lightColor.xyz * u_scene.lightColor.w ; //* computeAttenuation(...)
 
 
 	// Cook-Torrance BRDF
@@ -138,7 +143,7 @@ void main() {
     //Ambient component
     const float ambientIntensity = 0.2;
     const vec3 ambientColor = vec3(1.0);
-    vec3 ambient = (ambientIntensity * 0.1 * ambientColor) * g_albedo * g_ao;
+    vec3 ambient = (u_scene.ambient.w * 0.1 * u_scene.ambient.xyz) * g_albedo * g_ao;
     color += ambient;
 
 	//Tone Up

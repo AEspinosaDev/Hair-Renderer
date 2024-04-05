@@ -5,7 +5,7 @@ layout(location = 0) in vec3 position;
 layout(location = 3) in vec3 uv;
 layout(location = 4) in vec3 color;
 
-layout (std140) uniform Camera
+layout (binding = 0) uniform Camera
 {
     mat4 viewProj;
     mat4 modelView;

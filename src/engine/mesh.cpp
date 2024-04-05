@@ -70,6 +70,7 @@ void Mesh::draw(GLenum drawingPrimitive)
         {
             m_material->get_pipeline().shader->bind();
             m_material->setup_pipeline();
+            m_material->bind_textures();
         }
 
         GL_CHECK(glBindVertexArray(m_vao));

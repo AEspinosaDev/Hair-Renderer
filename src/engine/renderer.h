@@ -3,6 +3,7 @@
 
 #include "core.h"
 #include "utils.h"
+#include "framebuffer.h"
 
 GLIB_NAMESPACE_BEGIN
 
@@ -119,28 +120,6 @@ public:
     {
         GL_CHECK(glViewport(0, 0, w, h));
         m_window.extent = {w, h};
-    }
-    inline virtual void clearColorBit()
-    {
-        GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
-    }
-    inline virtual void clearColorDepthBit()
-    {
-        GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-    }
-    inline virtual void clearDepthBit()
-    {
-        GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
-    }
-    inline virtual void enableDepthTest(bool op)
-    {
-        op ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
-        m_settings.depthTest = op;
-    }
-    inline virtual void enableDepthWrites(bool op)
-    {
-        GL_CHECK(glDepthMask(op));
-        m_settings.depthWrites = op;
     }
 #pragma endregion
 #pragma region user_interface
