@@ -17,79 +17,74 @@ void Texture::setup() const
     switch (m_config.type)
     {
     case TEXTURE_2D:
-        if (m_config.samples == 1)
-        {
-            GL_CHECK(glTexImage2D(
-                m_config.type,
-                m_config.level,
-                m_config.internalFormat,
-                m_extent.width,
-                m_extent.height,
-                m_config.border,
-                m_config.format,
-                m_config.dataType,
-                m_image.data));
-        }
-        else
-        {
-            GL_CHECK(glTexImage2DMultisample(m_config.type,
-                                             m_config.samples,
-                                             m_config.internalFormat,
-                                             m_extent.width,
-                                             m_extent.height,
-                                             GL_TRUE));
-        }
+        GL_CHECK(glTexImage2D(
+            m_config.type,
+            m_config.level,
+            m_config.internalFormat,
+            m_extent.width,
+            m_extent.height,
+            m_config.border,
+            m_config.format,
+            m_config.dataType,
+            m_image.data));
         break;
 
     case TEXTURE_3D || TEXTURE_2D_ARRAY:
-        if (m_config.samples == 1)
-        {
-            GL_CHECK(glTexImage3D(
-                m_config.type,
-                m_config.level,
-                m_config.internalFormat,
-                m_extent.width,
-                m_extent.height,
-                m_config.layers,
-                m_config.border,
-                m_config.format,
-                m_config.dataType,
-                m_image.data));
-        }
-        else
-        {
-            GL_CHECK(glTexImage3DMultisample(m_config.type,
-                                             m_config.samples,
-                                             m_config.internalFormat,
-                                             m_extent.width,
-                                             m_extent.height,
-                                             m_config.layers,
-                                             GL_TRUE));
-        }
+        GL_CHECK(glTexImage3D(
+            m_config.type,
+            m_config.level,
+            m_config.internalFormat,
+            m_extent.width,
+            m_extent.height,
+            m_config.layers,
+            m_config.border,
+            m_config.format,
+            m_config.dataType,
+            m_image.data));
+        break;
+    case TEXTURE_2D_MULTISAMPLE:
+        GL_CHECK(glTexImage2DMultisample(TEXTURE_2D_MULTISAMPLE,
+                                         m_config.samples,
+                                         m_config.internalFormat,
+                                         m_extent.width,
+                                         m_extent.height,
+                                         GL_TRUE));
+        break;
+    case TEXTURE_2D_MULRISAMPLE_ARRAY:
+        GL_CHECK(glTexImage3DMultisample(m_config.type,
+                                         m_config.samples,
+                                         m_config.internalFormat,
+                                         m_extent.width,
+                                         m_extent.height,
+                                         m_config.layers,
+                                         GL_TRUE));
         break;
     case TEXTURE_CUBEMAP:
         // TBD...
         break;
     }
 
-    if (m_config.useMipmaps)
+    if (m_config.type != TEXTURE_2D_MULTISAMPLE && m_config.type != TEXTURE_2D_MULRISAMPLE_ARRAY)
     {
-        GL_CHECK(glGenerateMipmap(m_config.type));
-        GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_MIN_FILTER, m_config.minFilter));
-        GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_MAG_FILTER, m_config.magFilter));
-    }
+        if (m_config.useMipmaps)
+        {
+            GL_CHECK(glGenerateMipmap(m_config.type));
+            GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_MIN_FILTER, m_config.minFilter));
+            GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_MAG_FILTER, m_config.magFilter));
+        }
 
-    GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_WRAP_T, m_config.wrapT));
-    GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_WRAP_S, m_config.wrapS));
+        GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_WRAP_T, m_config.wrapT));
+        GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_WRAP_S, m_config.wrapS));
 
-    GL_CHECK(glTexParameterfv(m_config.type, GL_TEXTURE_BORDER_COLOR, (float*)&m_config.borderColor));
+        GL_CHECK(glTexParameterfv(m_config.type, GL_TEXTURE_BORDER_COLOR, (float *)&m_config.borderColor));
 
-    if (m_config.anisotropicFilter)
-    {
+        if (m_config.anisotropicFilter)
+        {
 
-        float fLargest;
-        GL_CHECK(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &fLargest));
-        GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_MAX_ANISOTROPY_EXT, fLargest));
+            float fLargest;
+            GL_CHECK(glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &fLargest));
+            GL_CHECK(glTexParameterf(m_config.type, GL_TEXTURE_MAX_ANISOTROPY_EXT, fLargest));
+        }
     }
 
     GL_CHECK(glBindTexture(m_config.type, 0));

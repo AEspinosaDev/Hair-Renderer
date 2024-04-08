@@ -2,6 +2,20 @@
 
 GLIB_NAMESPACE_BEGIN
 
+void Material::bind() const
+{
+    m_pipeline.shader->bind();
+    setup_pipeline();
+    upload_uniforms();
+    bind_textures();
+}
+
+void Material::unbind() const
+{
+    unbind_textures();
+    m_pipeline.shader->unbind();
+}
+
 void Material::upload_uniforms() const
 {
 
@@ -29,10 +43,9 @@ void Material::upload_uniforms() const
     {
         m_pipeline.shader->set_bool(bu.first.c_str(), bu.second);
     }
-
 }
 
-void Material::setup_pipeline()
+void Material::setup_pipeline() const
 {
     glCullFace(m_pipeline.state.cullFace);
     m_pipeline.state.depthTest ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
@@ -53,18 +66,20 @@ void Material::setup_pipeline()
     bind_textures();
 }
 
-void Material::bind_textures()
+void Material::bind_textures() const
 {
-    // m_pipeline.shader->bind();
+    for (auto &textureData : m_textures)
+    {
+        textureData.second.texture->bind(textureData.second.slot);
+    }
+}
 
-    // for (auto &texture : m_textures)
-    // {
-    //     glActive(TAL)
-    //     set int tal
-    //     tal
-    // }
-
-    //  m_pipeline.shader->unbind();
+void Material::unbind_textures() const
+{
+     for (auto &textureData : m_textures)
+    {
+        textureData.second.texture->unbind();
+    }
 }
 
 GLIB_NAMESPACE_END

@@ -52,6 +52,10 @@ void Framebuffer::generate()
                 GL_CHECK(glFramebufferTexture3D(GL_FRAMEBUFFER, attachment.attachmentType,
                                                 type, texture->get_id(), texture->get_config().level, texture->get_config().layers));
                 break;
+            case TEXTURE_2D_MULTISAMPLE:
+                GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, attachment.attachmentType,
+                                                type, texture->get_id(), texture->get_config().level));
+                break;
             }
         }
         else
@@ -59,7 +63,8 @@ void Framebuffer::generate()
 
             Renderbuffer *renderbuffer = attachment.renderbuffer;
 
-            if (!renderbuffer){
+            if (!renderbuffer)
+            {
                 ERR_LOG("No instance of renderbuffer in framebuffer attachment! Either previously create the instance or turn false -isRenderbuffer- option");
                 ASSERT(renderbuffer);
             }
@@ -78,7 +83,7 @@ void Framebuffer::generate()
 
             GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment.attachmentType, GL_RENDERBUFFER, renderbuffer->get_id()));
 
-            // renderbuffer->unbind();
+            renderbuffer->unbind();
         }
     }
 
@@ -144,19 +149,17 @@ void Framebuffer::resize(Extent2D extent)
                 else
                     GL_CHECK(glRenderbufferStorageMultisample(GL_RENDERBUFFER, m_samples, attachment.renderbuffer->get_internal_format(), m_extent.width, m_extent.height));
 
-                GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment.attachmentType, GL_RENDERBUFFER, attachment.renderbuffer->get_id()));
-
                 attachment.renderbuffer->unbind();
             }
         }
     }
 }
 
-void Framebuffer::blit(const Framebuffer *const dst, unsigned int mask, unsigned int filter,
+void Framebuffer::blit(const Framebuffer *const src, const Framebuffer *const dst, unsigned int mask, unsigned int filter,
                        Extent2D srcExtent, Extent2D dstExtent,
-                       Position2D srcOrigin, Position2D dstOrigin) const
+                       Position2D srcOrigin, Position2D dstOrigin)
 {
-    GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER, m_id));
+    GL_CHECK(glBindFramebuffer(GL_READ_FRAMEBUFFER, src ? src->get_id() : 0));
     GL_CHECK(glBindFramebuffer(GL_DRAW_FRAMEBUFFER, dst ? dst->get_id() : 0));
 
     GL_CHECK(glBlitFramebuffer(srcOrigin.x, srcOrigin.y, srcExtent.width, srcExtent.height,

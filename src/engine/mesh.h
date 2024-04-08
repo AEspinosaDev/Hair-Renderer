@@ -73,7 +73,18 @@ public:
     virtual void draw(bool useMaterial = true, unsigned int drawingPrimitive = GL_TRIANGLES);
 
     inline static int get_number_of_instances() { return INSTANCED_MESHES; }
+
+    /*
+    Creates a screen quad for rendering textures onto the screen. Useful for postprocess and deferred screen space methods
+    */
+    static Mesh* create_screen_quad();
+
+    static Mesh* create_cube();
+
+    static Mesh* create_quad();
 };
+
+
 GLIB_NAMESPACE_END
 
 namespace std

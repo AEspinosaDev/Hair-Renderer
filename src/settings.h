@@ -30,6 +30,8 @@ struct GlobalSettings
     glm::vec3 ambientColor = glm::vec3(1.0f);
     float ambientStrength = 0.3f;
     Extent2D shadowExtent = {2048, 2048};
+    unsigned int samples = 16;
+    
 };
 
 #endif

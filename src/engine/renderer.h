@@ -92,7 +92,7 @@ public:
 
     void run();
 
-#pragma region getters&setters
+#pragma region GETTERS & SETTERS
     inline RendererSettings get_settings() const
     {
         return m_settings;
@@ -111,8 +111,6 @@ public:
         m_settings.vSync = op;
     }
 #pragma endregion
-
-#pragma region opengl_state_wrappers
     /*
     Use as callback
     */
@@ -125,8 +123,8 @@ public:
     {
         GL_CHECK(glViewport(origin.x, origin.y, extent.width, extent.height));
     }
-#pragma endregion
-#pragma region user_interface
+
+#pragma region USER INTERFACE
     inline bool user_interface_wants_to_handle_input()
     {
         ImGuiIO &io = ImGui::GetIO();

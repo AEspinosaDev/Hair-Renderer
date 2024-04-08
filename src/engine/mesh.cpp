@@ -21,7 +21,7 @@ void Mesh::generate_buffers()
     GL_CHECK(glBindVertexArray(m_vao));
 
     // -------------------- [ATTENTION ATTENTION] ---------------------
-    //  ------------------  INTERLEAVED ATTRIBUTES  -------------------- 
+    //  ------------------  INTERLEAVED ATTRIBUTES  --------------------
 
     unsigned int vbo;
     GL_CHECK(glGenBuffers(1, &vbo));
@@ -61,16 +61,14 @@ void Mesh::generate_buffers()
     m_buffer_loaded = true;
 }
 
-void Mesh::draw(bool useMaterial ,unsigned int drawingPrimitive)
+void Mesh::draw(bool useMaterial, unsigned int drawingPrimitive)
 {
     if (m_enabled && m_buffer_loaded)
     {
 
         if (m_material && useMaterial)
         {
-            m_material->get_pipeline().shader->bind();
-            m_material->setup_pipeline();
-            m_material->bind_textures();
+            m_material->bind();
         }
 
         GL_CHECK(glBindVertexArray(m_vao));
@@ -87,11 +85,25 @@ void Mesh::draw(bool useMaterial ,unsigned int drawingPrimitive)
 
         if (m_material && useMaterial)
         {
-            m_material->get_pipeline().shader->unbind();
+            m_material->unbind();
         }
     }
     else
         generate_buffers();
+}
+
+Mesh *Mesh::create_screen_quad()
+{
+    Mesh *screen = new Mesh();
+    Geometry geometry;
+    geometry.vertices = {{{-1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}},
+                         {{1.0f, -1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}},
+                         {{-1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 1.0f}, {0.0f, 0.0f, 0.0f}},
+                         {{1.0f, 1.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 0.0f, 0.0f}}};
+    geometry.indices = {0, 1, 2, 1, 3, 2};
+    screen->set_geometry(geometry);
+    screen->generate_buffers();
+    return screen;
 }
 
 GLIB_NAMESPACE_END

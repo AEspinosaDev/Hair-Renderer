@@ -32,6 +32,7 @@ private:
     Mesh *m_hair;
     Mesh *m_head;
     Mesh *m_floor;
+    Mesh* m_vignette;
 
     struct LightData
     {
@@ -77,8 +78,9 @@ private:
     //--- Framebuffer and shading data ---
 
     GraphicPipeline m_depthPipeline{};
-    GraphicPipeline m_strandDepthPipeline{};
+    // GraphicPipeline m_strandDepthPipeline{};
 
+    Framebuffer* m_multisampledFBO;
     Framebuffer *m_shadowFBO;
 
     //--- Settings ---
@@ -103,7 +105,9 @@ private:
 
     void shadow_pass();
 
-#pragma region input
+    void screen_pass();
+
+#pragma region INPUT
     void key_callback(GLFWwindow *w, int a, int b, int c, int d)
     {
         if (glfwGetKey(m_window.ptr, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -130,6 +134,7 @@ private:
     {
         m_camera->set_projection(width, height);
         resize({width, height});
+        m_multisampledFBO->resize({width, height});
     }
 
 #pragma endregion

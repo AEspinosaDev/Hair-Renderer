@@ -159,7 +159,7 @@ float filterPCF(int kernelSize, vec3 coords, float bias) {
 
     for(int x = -edge; x <= edge; ++x) {
         for(int y = -edge; y <= edge; ++y) {
-            float pcfDepth = texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize.xy)).r;
+            float pcfDepth = texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize)).r;
             shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
         }
     }
@@ -178,12 +178,7 @@ float computeShadow(){
     if(projCoords.z > 1.0 || projCoords.z < 0.0)
         return 0.0;
 
-    // // float bias = 0.1;
-    //  vec3 lightDir = scene.type == 0 ? normalize(v_lightPos - v_pos) : normalize(v_lightPos);
-    // float bias = max(0.5 * tan(acos(dot(v_normal, -lightDir))), 0.05);
-
-    // // Apply the bias
-    // bias=  max(bias, 0.5);
+    
     return filterPCF(int(u_scene.shadowConfig.y), projCoords, u_scene.shadowConfig.x);
 }
 
@@ -208,5 +203,6 @@ void main() {
     color = pow(color, vec3(1.0 / GAMMA));
 
     FragColor = vec4(color, 1.0);
+    // FragColor = vec4(texture(u_shadowMap,_uv).r,0.0,0.0,0.0);
 
 }

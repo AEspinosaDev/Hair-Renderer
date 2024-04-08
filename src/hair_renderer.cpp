@@ -2,7 +2,7 @@
 
 void HairRenderer::init()
 {
-#pragma region ______________ INIT ______________
+#pragma region INIT
     Renderer::init();
 
     chdir("/home/tony/Dev/OpenGL-Hair/");
@@ -10,6 +10,8 @@ void HairRenderer::init()
     m_camera = new Camera(m_window.extent.width, m_window.extent.height, {0.0f, 0.0f, -10.0f});
 
     m_controller = new Controller(m_camera);
+
+    m_vignette = Mesh::create_screen_quad();
 
     m_hair = new Mesh();
     m_head = new Mesh();
@@ -25,48 +27,32 @@ void HairRenderer::init()
     m_light.set_position({6.0f, 3.0f, -6.0f});
 
 #pragma endregion
-#pragma region ______________ SHADER PIPELINES______________
+#pragma region FRAMEBUFFERS
 
-    // Uniform buffers
-    m_cameraUBO = new UniformBuffer(sizeof(CameraUniforms), UBOLayout::CAMERA_LAYOUT);
-    m_cameraUBO->generate();
+    // Creating multisampled forward pass buffer
 
-    m_globalUBO = new UniformBuffer(sizeof(GlobalUniforms), UBOLayout::GLOBAL_LAYOUT);
-    m_globalUBO->generate();
+    TextureConfig masaaColorConfig{};
+    masaaColorConfig.type = TextureType::TEXTURE_2D_MULTISAMPLE;
+    masaaColorConfig.format = GL_RGBA;
+    masaaColorConfig.internalFormat = GL_RGBA16;
+    masaaColorConfig.dataType = GL_UNSIGNED_BYTE;
 
-    GraphicPipeline litPipeline{};
-    litPipeline.shader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
-    litPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
-    litPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
-    Material *headMaterial = new Material(litPipeline);
-    m_head->set_material(headMaterial);
-    Material *floorMaterial = new Material(litPipeline);
-    m_floor->set_material(floorMaterial);
+    Attachment msaaColorAttachment{};
+    msaaColorAttachment.texture = new Texture(m_window.extent, masaaColorConfig);
+    msaaColorAttachment.attachmentType = GL_COLOR_ATTACHMENT0;
+    Attachment msaaDepthAttachment{};
+    msaaDepthAttachment.isRenderbuffer = true;
+    msaaDepthAttachment.renderbuffer = new Renderbuffer(GL_DEPTH24_STENCIL8);
+    msaaDepthAttachment.attachmentType = GL_DEPTH_STENCIL_ATTACHMENT;
 
-    GraphicPipeline hairPipeline{};
-    hairPipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
-    hairPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
-    hairPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
-    Material *hairMaterial = new Material(hairPipeline);
-    m_hair->set_material(hairMaterial);
-
-    GraphicPipeline unlitPipeline{};
-    unlitPipeline.shader = new Shader("resources/shaders/unlit.glsl", ShaderType::UNLIT);
-    unlitPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
-    Material *lightMaterial = new Material(unlitPipeline);
-    m_light.dummy->set_material(lightMaterial);
-
-    m_depthPipeline.shader = new Shader("resources/shaders/depth.glsl", ShaderType::UNLIT);
-    m_strandDepthPipeline.shader = new Shader("resources/shaders/strand-depth.glsl", ShaderType::UNLIT);
-
-#pragma endregion
-#pragma region ______________ FRAMEBUFFERS ______________
+    m_multisampledFBO = new Framebuffer(m_window.extent, {msaaColorAttachment, msaaDepthAttachment}, m_globalSettings.samples);
+    m_multisampledFBO->generate();
 
     // Creating the shadow pass buffer
 
     TextureConfig depthConfig{};
     depthConfig.format = GL_DEPTH_COMPONENT;
-    depthConfig.internalFormat = GL_DEPTH_COMPONENT16;
+    depthConfig.internalFormat = GL_DEPTH_COMPONENT32;
     depthConfig.dataType = GL_FLOAT;
     depthConfig.anisotropicFilter = false;
     depthConfig.magFilter = GL_NEAREST;
@@ -84,8 +70,51 @@ void HairRenderer::init()
     m_shadowFBO->generate();
 
 #pragma endregion
+#pragma region SHADER PIPELINES
 
-#pragma region ______________ MESH LOADING ______________
+    // Uniform buffers
+    m_cameraUBO = new UniformBuffer(sizeof(CameraUniforms), UBOLayout::CAMERA_LAYOUT);
+    m_cameraUBO->generate();
+
+    m_globalUBO = new UniformBuffer(sizeof(GlobalUniforms), UBOLayout::GLOBAL_LAYOUT);
+    m_globalUBO->generate();
+
+    GraphicPipeline litPipeline{};
+    litPipeline.shader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
+    litPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
+    litPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
+    Material *headMaterial = new Material(litPipeline);
+    headMaterial->set_texture("u_shadowMap", m_shadowFBO->get_attachments().front().texture);
+    m_head->set_material(headMaterial);
+    Material *floorMaterial = new Material(litPipeline);
+    floorMaterial->set_texture("u_shadowMap", m_shadowFBO->get_attachments().front().texture);
+    m_floor->set_material(floorMaterial);
+
+    GraphicPipeline hairPipeline{};
+    hairPipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
+    hairPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
+    hairPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
+    Material *hairMaterial = new Material(hairPipeline);
+    m_hair->set_material(hairMaterial);
+
+    GraphicPipeline unlitPipeline{};
+    unlitPipeline.shader = new Shader("resources/shaders/unlit.glsl", ShaderType::UNLIT);
+    unlitPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
+    Material *lightMaterial = new Material(unlitPipeline);
+    m_light.dummy->set_material(lightMaterial);
+
+    m_depthPipeline.shader = new Shader("resources/shaders/depth.glsl", ShaderType::UNLIT);
+
+    GraphicPipeline screenPipeline{};
+    screenPipeline.shader = new Shader("resources/shaders/screen.glsl", ShaderType::UNLIT);
+    Material *screenMaterial = new Material(screenPipeline);
+    screenMaterial->set_texture("u_frame", m_multisampledFBO->get_attachments().front().texture);
+    m_vignette->set_material(screenMaterial);
+
+
+#pragma endregion
+
+#pragma region MESH LOADING 
 #define YUKSEL
 #ifdef YUKSEL
     // CEM YUKSEL MODELS
@@ -146,24 +175,23 @@ void HairRenderer::draw()
         shadow_pass();
 
     forward_pass();
+
+    screen_pass();
 }
 
-#pragma region ______________ FORWARD PASS ______________
+#pragma region FORWARD PASS
 void HairRenderer::forward_pass()
 {
-    Framebuffer::bind_default();
+    m_multisampledFBO->bind();
     Framebuffer::clear_color_depth_bit();
 
     resize_viewport(m_window.extent);
 
     // ----- Draw ----
 
-    m_shadowFBO->get_attachments().front().texture->bind(0);
-
     MaterialUniforms headu;
     headu.mat4Types["u_model"] = m_head->get_model_matrix();
     headu.vec3Types["u_albedo"] = m_headSettings.skinColor;
-    headu.intTypes["u_shadowMap"] = 0;
     m_head->get_material()->set_uniforms(headu);
 
     m_head->draw();
@@ -194,21 +222,20 @@ void HairRenderer::forward_pass()
     flooru.mat4Types["u_model"] = m_floor->get_model_matrix();
     flooru.vec3Types["u_albedo"] = glm::vec3(1.0);
     flooru.vec3Types["u_albedo"] = glm::vec3(1.0);
-    flooru.intTypes["u_shadowMap"] = 0;
     m_floor->get_material()->set_uniforms(flooru);
 
     m_floor->draw();
-
-    m_shadowFBO->get_attachments().front().texture->unbind();
 }
 #pragma endregion
 
-#pragma region ______________ SHADOW PASS ______________
+#pragma region SHADOW PASS
 void HairRenderer::shadow_pass()
 {
 
     m_shadowFBO->bind();
     Framebuffer::clear_depth_bit();
+    Framebuffer::enable_depth_writes(true);
+    Framebuffer::enable_depth_test(true);
 
     resize_viewport(m_globalSettings.shadowExtent);
 
@@ -220,15 +247,22 @@ void HairRenderer::shadow_pass()
     m_depthPipeline.shader->set_mat4("u_model", m_floor->get_model_matrix());
     m_floor->draw(false);
 
-
-    // m_strandDepthPipeline.shader->bind();
-
     m_depthPipeline.shader->set_mat4("u_model", m_hair->get_model_matrix());
 
     m_hair->draw(false, GL_LINES);
+
     m_depthPipeline.shader->unbind();
 
-    // m_strandDepthPipeline.shader->unbind();
+}
+#pragma endregion
+#pragma region SCREEN PASS
+void HairRenderer::screen_pass()
+{
+    Framebuffer::blit(m_multisampledFBO, nullptr, GL_COLOR_BUFFER_BIT, GL_NEAREST, m_window.extent, m_window.extent);
+
+    // Framebuffer::bind_default();
+
+    // m_vignette->draw();
 }
 #pragma endregion
 

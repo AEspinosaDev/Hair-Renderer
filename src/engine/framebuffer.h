@@ -72,12 +72,12 @@ public:
     void unbind() const;
 
     /*
-    Copy framebuffer data to the given framebuffer. If framebuffer pointer is set to null,
-    it will copy it to the defalt framebuffer
+    Copy source framebuffer data to the destiny framebuffer. If framebuffer pointer is set to null,
+    it will use the defalt framebuffer
     */
-    void blit(const Framebuffer *const dst, unsigned int mask, unsigned int filter,
+    static void blit(const Framebuffer *const src, const Framebuffer *const dst, unsigned int mask, unsigned int filter,
               Extent2D srcExtent, Extent2D dstExtent,
-              Position2D srcOrigin = {0, 0}, Position2D dstOrigin = {0, 0}) const;
+              Position2D srcOrigin = {0, 0}, Position2D dstOrigin = {0, 0});
 
     static void bind_default();
 
@@ -101,8 +101,8 @@ class Renderbuffer
     bool m_generated{false};
 
 public:
-    Renderbuffer(unsigned int internatFormat = GL_DEPTH24_STENCIL8)
-        : m_interalFormat(m_interalFormat){};
+    Renderbuffer(unsigned int internatFormat)
+        : m_interalFormat(internatFormat){};
 
     ~Renderbuffer()
     {
