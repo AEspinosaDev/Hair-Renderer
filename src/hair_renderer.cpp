@@ -18,7 +18,7 @@ void HairRenderer::init()
 
     m_floor = new Mesh();
     loaders::load_OBJ(m_floor, "resources/models/plane.obj");
-    m_floor->set_scale(10.0f);
+    m_floor->set_scale(50.0f);
     m_floor->set_position({0.0f, -4.0f, 0.0f});
 
     m_light.light = new PointLight();
@@ -52,14 +52,14 @@ void HairRenderer::init()
 
     TextureConfig depthConfig{};
     depthConfig.format = GL_DEPTH_COMPONENT;
-    depthConfig.internalFormat = GL_DEPTH_COMPONENT32;
+    depthConfig.internalFormat = GL_DEPTH_COMPONENT24;
     depthConfig.dataType = GL_FLOAT;
     depthConfig.anisotropicFilter = false;
     depthConfig.magFilter = GL_NEAREST;
     depthConfig.minFilter = GL_NEAREST;
-    // depthConfig.useMipmaps = false;
     depthConfig.wrapS = GL_CLAMP_TO_BORDER;
     depthConfig.wrapT = GL_CLAMP_TO_BORDER;
+    depthConfig.useMipmaps = false;
     depthConfig.borderColor = glm::vec4(1.0f);
 
     Attachment depthAttachment{};
@@ -111,10 +111,9 @@ void HairRenderer::init()
     screenMaterial->set_texture("u_frame", m_multisampledFBO->get_attachments().front().texture);
     m_vignette->set_material(screenMaterial);
 
-
 #pragma endregion
 
-#pragma region MESH LOADING 
+#pragma region MESH LOADING
 #define YUKSEL
 #ifdef YUKSEL
     // CEM YUKSEL MODELS
@@ -125,7 +124,7 @@ void HairRenderer::init()
         std::thread loadThread2(hair_loaders::load_cy_hair, m_hair, "resources/models/natural.hair");
         loadThread2.detach();
         m_hair->set_scale(0.054f);
-        m_hair->set_position({0.015f, -0.09f, 0.2f});
+        m_hair->set_position({0.015f, -0.2f, 0.2f});
         m_hair->set_rotation({-90.0f, 0.0f, 16.7f});
     }
 #else
@@ -166,6 +165,7 @@ void HairRenderer::draw()
                                     1.0f,
                                     shadow.nearPlane,
                                     shadow.farPlane);
+    // glm::mat4 lp = glm::ortho( -1.0f,1.0f,-1.0f,1.0f,shadow.nearPlane,  shadow.farPlane);
     glm::mat4 lv = glm::lookAt(m_light.light->get_position(), shadow.target, glm::vec3(0, 1, 0));
     globu.shadowConfig = {shadow.bias, shadow.pcfKernel, shadow.cast, 0.0f};
     globu.lightViewProj = lp * lv;
@@ -205,7 +205,6 @@ void HairRenderer::forward_pass()
     hairu.floatTypes["u_specPwr2"] = m_hairSettings.specPower2;
     hairu.floatTypes["u_thickness"] = m_hairSettings.thickness;
     hairu.vec3Types["u_camPos"] = m_camera->get_position();
-
     m_hair->get_material()->set_uniforms(hairu);
 
     m_hair->draw(true, GL_LINES);
@@ -220,7 +219,6 @@ void HairRenderer::forward_pass()
 
     MaterialUniforms flooru;
     flooru.mat4Types["u_model"] = m_floor->get_model_matrix();
-    flooru.vec3Types["u_albedo"] = glm::vec3(1.0);
     flooru.vec3Types["u_albedo"] = glm::vec3(1.0);
     m_floor->get_material()->set_uniforms(flooru);
 
@@ -239,6 +237,7 @@ void HairRenderer::shadow_pass()
 
     resize_viewport(m_globalSettings.shadowExtent);
 
+
     m_depthPipeline.shader->bind();
 
     m_depthPipeline.shader->set_mat4("u_model", m_head->get_model_matrix());
@@ -252,7 +251,6 @@ void HairRenderer::shadow_pass()
     m_hair->draw(false, GL_LINES);
 
     m_depthPipeline.shader->unbind();
-
 }
 #pragma endregion
 #pragma region SCREEN PASS
@@ -288,6 +286,8 @@ void HairRenderer::setup_user_interface_frame()
     gui::draw_transform_widget(m_hair);
     ImGui::DragFloat("Strand thickness", &m_hairSettings.thickness, 0.001f, 0.001f, 0.05f);
     ImGui::ColorEdit3("Strand color", (float *)&m_hairSettings.color);
+    ImGui::DragFloat("Specular 1 power", &m_hairSettings.specPower1,1.0f, 0.0f, 240.0f);
+    ImGui::DragFloat("Specular 2 power", &m_hairSettings.specPower2,1.0f, 0.0f, 240.0f);
     ImGui::Separator();
     ImGui::SeparatorText("Head Settings");
     gui::draw_transform_widget(m_head);

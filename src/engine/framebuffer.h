@@ -92,6 +92,8 @@ public:
     static void enable_depth_test(bool op);
 
     static void enable_depth_writes(bool op);
+
+    static void enable_rasterizer(bool op);
 };
 
 class Renderbuffer

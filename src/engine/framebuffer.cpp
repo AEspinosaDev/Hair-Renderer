@@ -197,4 +197,8 @@ void Framebuffer::enable_depth_writes(bool op)
     GL_CHECK(glDepthMask(op));
 }
 
+void Framebuffer::enable_rasterizer(bool op){
+    !op ? glEnable(GL_RASTERIZER_DISCARD) : glDisable(GL_RASTERIZER_DISCARD);
+}
+
 GLIB_NAMESPACE_END

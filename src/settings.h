@@ -13,11 +13,11 @@ struct UserInterfaceSettings
 struct HairSettings
 {
     float thickness = 0.005f;
-    glm::vec3 color = glm::vec3(0.27f, 0.095f, 0.02f);
+    glm::vec3 color = glm::vec3(0.45f, 0.33f, 0.18f);
     glm::vec3 specColor1 = glm::vec3(1.0f, 1.0f, 1.0f);
     glm::vec3 specColor2 = color;
-    float specPower1 = 120.0f;
-    float specPower2 = 120.0f;
+    float specPower1 = 210.0f;
+    float specPower2 = 8.0f;
 };
 struct HeadSettings
 {
