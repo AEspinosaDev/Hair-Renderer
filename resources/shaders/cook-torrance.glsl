@@ -212,8 +212,6 @@ void main() {
         color*= 1.0 - computeShadow();
 
     //Ambient component
-    const float ambientIntensity = 0.2;
-    const vec3 ambientColor = vec3(1.0);
     vec3 ambient = (u_scene.ambientIntensity * 0.1 * u_scene.ambientColor) * s.albedo * s.ao;
     color += ambient;
 

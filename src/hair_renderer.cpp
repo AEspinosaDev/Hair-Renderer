@@ -95,6 +95,7 @@ void HairRenderer::init()
     hairPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
     hairPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
     Material *hairMaterial = new Material(hairPipeline);
+    hairMaterial->set_texture("u_shadowMap", m_shadowFBO->get_attachments().front().texture);
     m_hair->set_material(hairMaterial);
 
     GraphicPipeline unlitPipeline{};
@@ -165,7 +166,6 @@ void HairRenderer::draw()
                                     1.0f,
                                     shadow.nearPlane,
                                     shadow.farPlane);
-    // glm::mat4 lp = glm::ortho( -1.0f,1.0f,-1.0f,1.0f,shadow.nearPlane,  shadow.farPlane);
     glm::mat4 lv = glm::lookAt(m_light.light->get_position(), shadow.target, glm::vec3(0, 1, 0));
     globu.shadowConfig = {shadow.bias, shadow.pcfKernel, shadow.cast, 0.0f};
     globu.lightViewProj = lp * lv;
@@ -213,6 +213,7 @@ void HairRenderer::forward_pass()
     m_light.dummy->set_position(m_light.light->get_position());
     dummyu.mat4Types["u_model"] = m_light.dummy->get_model_matrix();
     dummyu.boolTypes["u_useVertexColor"] = false;
+    dummyu.vec3Types["u_baseColor"] = glm::vec3(1.0f);
     m_light.dummy->get_material()->set_uniforms(dummyu);
 
     m_light.dummy->draw();
@@ -236,7 +237,6 @@ void HairRenderer::shadow_pass()
     Framebuffer::enable_depth_test(true);
 
     resize_viewport(m_globalSettings.shadowExtent);
-
 
     m_depthPipeline.shader->bind();
 
@@ -286,8 +286,8 @@ void HairRenderer::setup_user_interface_frame()
     gui::draw_transform_widget(m_hair);
     ImGui::DragFloat("Strand thickness", &m_hairSettings.thickness, 0.001f, 0.001f, 0.05f);
     ImGui::ColorEdit3("Strand color", (float *)&m_hairSettings.color);
-    ImGui::DragFloat("Specular 1 power", &m_hairSettings.specPower1,1.0f, 0.0f, 240.0f);
-    ImGui::DragFloat("Specular 2 power", &m_hairSettings.specPower2,1.0f, 0.0f, 240.0f);
+    ImGui::DragFloat("Specular 1 power", &m_hairSettings.specPower1, 1.0f, 0.0f, 240.0f);
+    ImGui::DragFloat("Specular 2 power", &m_hairSettings.specPower2, 1.0f, 0.0f, 240.0f);
     ImGui::Separator();
     ImGui::SeparatorText("Head Settings");
     gui::draw_transform_widget(m_head);

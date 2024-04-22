@@ -42,7 +42,4 @@ out vec4 FragColor;
 
 void main() {
     FragColor = vec4(!u_useVertexColor? u_baseColor : _color, u_opacity);
-    FragColor = vec4(1.0,1.0,1.0, 1.0);
-
-
 }
