@@ -200,7 +200,8 @@ float fresnelSchlick(float ior, float cosTheta) {
 float NR(vec3 wi, vec3 wo, float cosPhi){
   float cosHalfPhi = sqrt(0.5+0.5*cosPhi);
 
-  return (0.25*cosHalfPhi)*fresnelSchlick(u_hair.ior,sqrt(0.5*(1+dot(wi,wo)))); //Att is fresnel
+  // return (0.25*cosHalfPhi)*fresnelSchlick(u_hair.ior,sqrt(0.5*(1+dot(wi,wo)))); //Frostbite
+  return (0.25*cosHalfPhi)*fresnelSchlick(u_hair.ior,sqrt(0.5+0.5*dot(wi,wo))); //Epic
 }
 //Attenuattion
 vec3 A(float f, int p, vec3 t){ //fresnel, Stage, Absorbtion
@@ -211,11 +212,11 @@ vec3 A(float f, int p, vec3 t){ //fresnel, Stage, Absorbtion
 vec3 NTT(float sinThetaD, float cosThetaD, float cosPhi){
 
   // float _ior = sqrt(u_hair.ior*u_hair.ior - sinThetaD* sinThetaD)/ cosThetaD; //Original
-  float _ior =  1.19 / cosThetaD + 0.36 * cosThetaD; //Fit
+  float _ior =  1.19 / cosThetaD + 0.36 * cosThetaD; //Fit EPIC
   float a = 1/_ior;
 
   float cosHalfPhi = sqrt(0.5+0.5*cosPhi); 
-  float h = 1 + a *(0.6-0.8*cosPhi) *  cosHalfPhi;
+  float h = 1 + a *(0.6-0.8*cosPhi) *  cosHalfPhi; //Fit EPIC
 
   float power = sqrt(1-h*h*a*a)/(2*cosThetaD);
 
@@ -227,16 +228,14 @@ vec3 NTT(float sinThetaD, float cosThetaD, float cosPhi){
 }
 // Azimuthal DOUBLE REFLECTION
 vec3 NTRT(float sinThetaD, float cosThetaD, float cosPhi){
-  float h = sqrt(3)*0.5; //Por que si
-  float _ior = sqrt(u_hair.ior*u_hair.ior - sinThetaD* sinThetaD)/ cosThetaD; //Original
-float gamma = asin(h/_ior);
-   vec3 T = exp(-2*u_hair.baseColor*(1+cos(2*gamma)));
+  // float _ior = sqrt(u_hair.ior*u_hair.ior - sinThetaD* sinThetaD)/ cosThetaD; //Original
+// float gamma = asin(h/_ior);
+  //  vec3 T = exp(-2*u_hair.baseColor*(1+cos(2*gamma)));
+  // float scale = clamp(1.5*(1-2.0*u_hair.roughness),0.0,1.0); //Frostbite scale term
 
-
-  float scale = clamp(1.5*(1-2.0*u_hair.roughness),0.0,1.0); //Frostbite scale term
-
+  float h = sqrt(3)/2; //Por que si
   float D = exp(17*cosPhi-16.78); //Intensity distribution
-  //  vec3 T = pow(u_hair.baseColor,vec3(0.8/cosThetaD));
+   vec3 T = pow(u_hair.baseColor,vec3(0.8/cosThetaD));
   float F = fresnelSchlick(u_hair.ior,cosThetaD*sqrt(1-h*h)); //Fresnel CONSTANT ?
 
   return A(F,2,T)*D;
@@ -244,9 +243,8 @@ float gamma = asin(h/_ior);
 
 //Longitudinal TERM
   float M(float sinTheta, float roughness){
-  return exp(-(sinTheta*sinTheta)/(2*roughness*roughness))/sqrt(2*PI*roughness);
-
-  return 1/(roughness*sqrt(2*PI))*exp((-sinTheta*sinTheta)/(2*roughness*roughness));
+  // return exp(-(sinTheta*sinTheta)/(2*roughness*roughness))/sqrt(2*PI*roughness); //Frostbite 
+  return 1/(roughness*sqrt(2*PI))*exp((-sinTheta*sinTheta)/(2*roughness*roughness)); //Epic. sintheta = sinThetaWi+sinThetaV-alpha
 }
 
 //Real-time Marschnerr
@@ -280,20 +278,22 @@ vec3 computeLighting(){
   float cosThetaD = cos(thetaD);
   float sinThetaD = sin(thetaD);
 
-  float thetaH = asin(dot(wh,u));
+  // float thetaH = asin(dot(wh,u));
 
-  float R = u_hair.r ? M(sin(thetaH-u_hair.shift), betaR )*NR(wi,v,cosPhiD): 0.0; //Estoy usando justo lo que usan frostbite, le tengo que multiplicar mucho la intensidad
-  vec3 TT = u_hair.tt ? M(sin(thetaH+u_hair.shift*.5),betaTT)*NTT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
-  vec3 TRT = u_hair.trt ? M(sin(thetaH+u_hair.shift*1.5),betaTRT)*NTRT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
+  float R = u_hair.r ? M(sinThetaWi+sinThetaV-u_hair.shift*2, betaR )*NR(wi,v,cosPhiD): 0.0; 
+  vec3 TT = u_hair.tt ? M(sinThetaWi+sinThetaV+u_hair.shift,betaTT)*NTT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
+  vec3 TRT = u_hair.trt ? M(sinThetaWi+sinThetaV+u_hair.shift*4,betaTRT)*NTRT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
 
   vec3 albedo = u_hair.baseColor;
-  vec3 specular = (R*u_hair.specular*10+TT+TRT)/(cosThetaD*cosThetaD) ;
+  vec3 specular = (R*u_hair.specular+TT+TRT);
 
-  // return specular / (cosThetaD*cosThetaD) + albedo;
-
-  
-
+  // return specular + albedo * radiance;
   return (albedo / PI + specular) * radiance;
+
+  //sI QUITO LA NORMALIACION DEL ALBEDO COLORES muy fuertes
+  //si pongo la normalizacion por el coseno D se vuelven muyy fuertes los coloes en alguos angulos 
+
+  // return specular/(cosThetaD*cosThetaD)  *radiance;
 
 }
 
