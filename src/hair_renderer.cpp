@@ -1,11 +1,13 @@
 #include "hair_renderer.h"
 
+#define YUKSEL
+
 void HairRenderer::init()
 {
 #pragma region INIT
     Renderer::init();
 
-    chdir("/home/tony/Dev/OpenGL-Hair/");
+    chdir("/home/tony/Dev/Hair-Renderer/");
 
     m_camera = new Camera(m_window.extent.width, m_window.extent.height, {0.0f, 0.0f, -10.0f});
 
@@ -91,7 +93,11 @@ void HairRenderer::init()
     m_floor->set_material(floorMaterial);
 
     GraphicPipeline hairPipeline{};
+#ifdef MARSCHNER
+    hairPipeline.shader = new Shader("resources/shaders/strand-marschner.glsl", ShaderType::LIT);
+#else
     hairPipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
+#endif
     hairPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
     hairPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
     Material *hairMaterial = new Material(hairPipeline);
@@ -115,7 +121,7 @@ void HairRenderer::init()
 #pragma endregion
 
 #pragma region MESH LOADING
-#define YUKSEL
+
 #ifdef YUKSEL
     // CEM YUKSEL MODELS
     {
@@ -197,13 +203,25 @@ void HairRenderer::forward_pass()
     m_head->draw();
 
     MaterialUniforms hairu;
-    hairu.mat4Types["u_model"] = m_hair->get_model_matrix();
+#ifdef MARSCHNER
+    hairu.vec3Types["u_hair.baseColor"] = m_hairSettings.baseColor;
+    hairu.floatTypes["u_hair.specular"] = m_hairSettings.specular;
+    hairu.floatTypes["u_hair.roughness"] = m_hairSettings.roughness;
+    hairu.floatTypes["u_hair.scatter"] = m_hairSettings.scatter;
+    hairu.floatTypes["u_hair.shift"] = m_hairSettings.shift;
+    hairu.floatTypes["u_hair.ior"] = m_hairSettings.ior;
+    hairu.boolTypes["u_hair.r"] = m_hairSettings.r;
+    hairu.boolTypes["u_hair.tt"] = m_hairSettings.tt;
+    hairu.boolTypes["u_hair.trt"] = m_hairSettings.trt;
+#else
     hairu.vec3Types["u_albedo"] = m_hairSettings.color;
     hairu.vec3Types["u_spec1"] = m_hairSettings.specColor1;
     hairu.floatTypes["u_specPwr1"] = m_hairSettings.specPower1;
     hairu.vec3Types["u_spec2"] = m_hairSettings.specColor2;
     hairu.floatTypes["u_specPwr2"] = m_hairSettings.specPower2;
+#endif
     hairu.floatTypes["u_thickness"] = m_hairSettings.thickness;
+    hairu.mat4Types["u_model"] = m_hair->get_model_matrix();
     hairu.vec3Types["u_camPos"] = m_camera->get_position();
     m_hair->get_material()->set_uniforms(hairu);
 
@@ -271,7 +289,8 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::NewFrame();
 
     // ImGui::ShowDemoWindow(&m_globalSettings.showUI);
-
+    ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Once);
+    ImGui::SetNextWindowSize(ImVec2(420, 920), ImGuiCond_Once);
     ImGui::Begin("Settings", &m_globalSettings.showUI); // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
     ImGui::SeparatorText("Profiler");
     ImGui::Text(" %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -285,9 +304,21 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::SeparatorText("Hair Settings");
     gui::draw_transform_widget(m_hair);
     ImGui::DragFloat("Strand thickness", &m_hairSettings.thickness, 0.001f, 0.001f, 0.05f);
-    ImGui::ColorEdit3("Strand color", (float *)&m_hairSettings.color);
+#ifdef MARSCHNER
+    ImGui::ColorEdit3("Base color", (float *)&m_hairSettings.baseColor);
+    ImGui::DragFloat("Specular", &m_hairSettings.specular, .05f, 0.0f, 5.0f);
+    ImGui::DragFloat("Roughness", &m_hairSettings.roughness, .05f, 0.0f, 1.0f);
+    ImGui::DragFloat("Scatter", &m_hairSettings.scatter, .1f, 0.0f, 2.0f);
+    ImGui::DragFloat("Shift", &m_hairSettings.shift, -0.05f, 2 * M_PI, M_PI_2);
+    ImGui::DragFloat("IOR", &m_hairSettings.ior, 0.01f, 0.0f, 3.0f);
+    ImGui::Checkbox("R Lobe", &m_hairSettings.r);
+    ImGui::Checkbox("TT Lobe", &m_hairSettings.tt);
+    ImGui::Checkbox("TRT Lobe", &m_hairSettings.trt);
+#else
+    ImGui::ColorEdit3("Base color", (float *)&m_hairSettings.color);
     ImGui::DragFloat("Specular 1 power", &m_hairSettings.specPower1, 1.0f, 0.0f, 240.0f);
     ImGui::DragFloat("Specular 2 power", &m_hairSettings.specPower2, 1.0f, 0.0f, 240.0f);
+#endif
     ImGui::Separator();
     ImGui::SeparatorText("Head Settings");
     gui::draw_transform_widget(m_head);

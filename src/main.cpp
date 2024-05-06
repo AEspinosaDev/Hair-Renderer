@@ -4,7 +4,10 @@
 
 int main(int, char **)
 {
-    HairRenderer renderer("Hair Viewer");
+    Window window;
+    window.extent = {1280,720};
+    window.title = "Hair Viewer";
+    HairRenderer renderer(window);
     try
     {
         renderer.run();

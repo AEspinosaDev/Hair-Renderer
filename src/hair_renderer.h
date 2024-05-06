@@ -141,6 +141,8 @@ private:
 
 public:
     HairRenderer(const char *title) : Renderer(title) {}
+    HairRenderer(Window window) : Renderer(window) {}
+
 };
 
 #endif
