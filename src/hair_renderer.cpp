@@ -128,10 +128,11 @@ void HairRenderer::init()
         std::thread loadThread1(loaders::load_PLY, m_head, "resources/models/woman.ply", true, true, false);
         loadThread1.detach();
         m_head->set_rotation({180.0f, -90.0f, 0.0f});
+        m_head->set_scale(0.98f);
         std::thread loadThread2(hair_loaders::load_cy_hair, m_hair, "resources/models/natural.hair");
         loadThread2.detach();
         m_hair->set_scale(0.054f);
-        m_hair->set_position({0.015f, -0.2f, 0.2f});
+        m_hair->set_position({0.015f, -0.2f, 0.3f});
         m_hair->set_rotation({-90.0f, 0.0f, 16.7f});
     }
 #else
@@ -306,11 +307,11 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::DragFloat("Strand thickness", &m_hairSettings.thickness, 0.001f, 0.001f, 0.05f);
 #ifdef MARSCHNER
     ImGui::ColorEdit3("Base color", (float *)&m_hairSettings.baseColor);
-    ImGui::DragFloat("Specular", &m_hairSettings.specular, .05f, 0.0f, 5.0f);
+    ImGui::DragFloat("Specular", &m_hairSettings.specular, .05f, 0.0f, 8.0f);
     ImGui::DragFloat("Roughness", &m_hairSettings.roughness, .05f, 0.0f, 1.0f);
-    ImGui::DragFloat("Scatter", &m_hairSettings.scatter, .1f, 0.0f, 2.0f);
+    ImGui::DragFloat("Scatter", &m_hairSettings.scatter, .1f, 0.0f, 5.0f);
     ImGui::DragFloat("Shift", &m_hairSettings.shift, -0.05f, 2 * M_PI, M_PI_2);
-    ImGui::DragFloat("IOR", &m_hairSettings.ior, 0.01f, 0.0f, 3.0f);
+    ImGui::DragFloat("IOR", &m_hairSettings.ior, 0.01f, 0.0f, 10.0f);
     ImGui::Checkbox("R Lobe", &m_hairSettings.r);
     ImGui::Checkbox("TT Lobe", &m_hairSettings.tt);
     ImGui::Checkbox("TRT Lobe", &m_hairSettings.trt);

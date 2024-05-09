@@ -1,4 +1,4 @@
-#shader vertex
+#stage vertex
 #version 460 core
 
 layout(location = 0) in vec3 position;
@@ -35,7 +35,7 @@ void main() {
 
 }
 
-#shader fragment
+#stage fragment
 #version 460 core
 
 in vec3 _pos;

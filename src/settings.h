@@ -16,11 +16,14 @@ struct HairSettings
 {
     float thickness = 0.004f;
 #ifdef MARSCHNER
-    glm::vec3 baseColor = glm::vec3(0.6f, 0.078f, 0.078f);
-    float specular = 1.0f; 
-    float roughness = 0.3f;
+    glm::vec3 baseColor = glm::vec3(
+        68.0f / 255.0f,
+        37.0f / 255.0f,
+        10.0f / 255.0f);
+    float specular = 5.0f;
+    float roughness = 0.4f;
     float scatter = 1.0f;
-    float shift = 0.12f; //In radians (-5º to -10º) => 0.088 to 0.17 
+    float shift = 0.12f; // In radians (-5º to -10º) => 0.088 to 0.17 //Not with epic 0.02 does fine
     float ior = 1.55f;
 
     bool r = true;

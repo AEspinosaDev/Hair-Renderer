@@ -1,4 +1,4 @@
-#shader vertex
+#stage vertex
 #version 460 core
 
 layout(location = 0) in vec3 position;
@@ -23,7 +23,7 @@ void main() {
 
 }
 
-#shader geometry
+#stage geometry
 #version 460 core
 
 
@@ -104,7 +104,7 @@ void main() {
 
 }
 
-#shader fragment
+#stage fragment
 #version 460 core
 
 
@@ -258,8 +258,8 @@ vec3 computeLighting(){
   vec3 u = normalize(g_dir);                          //Strand tangent/direction
   vec3 wh = normalize(wi + v);                         //Halfvector
 
-  // vec3 radiance = u_scene.lightColor * u_scene.lightIntensity;
-  vec3 radiance = u_scene.lightColor ;
+  vec3 radiance = u_scene.lightColor*u_scene.lightIntensity;
+  // vec3 radiance = u_scene.lightColor ;
   
   //Betas
   float betaR = u_hair.roughness*u_hair.roughness;
@@ -285,12 +285,13 @@ vec3 computeLighting(){
   vec3 TRT = u_hair.trt ? M(sinThetaWi+sinThetaV+u_hair.shift*4,betaTRT)*NTRT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
 
   vec3 albedo = u_hair.baseColor;
-  vec3 specular = (R*u_hair.specular+TT+TRT);
+  vec3 specular = (R*u_hair.specular+TT+TRT*u_hair.specular)/(cosThetaD*cosThetaD);
 
-  // return specular + albedo * radiance;
-  return (albedo / PI + specular) * radiance;
+  return (specular+albedo)* radiance;
+  // return (albedo / PI + specular) * radiance;
 
-  //sI QUITO LA NORMALIACION DEL ALBEDO COLORES muy fuertes
+  //sI QUITO LA NORMALIACION DEL ALBEDO mas o menos todo bien
+  //problema hay que mutiplicar muchi el R y TRT
   //si pongo la normalizacion por el coseno D se vuelven muyy fuertes los coloes en alguos angulos 
 
   // return specular/(cosThetaD*cosThetaD)  *radiance;
@@ -309,6 +310,7 @@ float filterPCF(int kernelSize, vec3 coords, float bias) {
     for(int x = -edge; x <= edge; ++x) {
         for(int y = -edge; y <= edge; ++y) {
             float pcfDepth = texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize)).r;
+            float weight = clamp(exp(-u_hair.scatter*(currentDepth-pcfDepth)),0.0,1.0);
             shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
         }
     }
@@ -339,15 +341,34 @@ float getLuminance(vec3 li){
 }
 
 vec3 multipleScattering(){
+  
   vec3 l = normalize(u_scene.lightPos.xyz- g_pos);  //Light vector
-  vec3 r = reflect(l,sh_normal); 
+  vec3 r = normalize(-g_pos);       
+  // vec3 r = reflect(l,sh_normal); 
   vec3 u = normalize(g_dir); 
   
   vec3 n = normalize(r - u * dot(u,r));
    
 
-  vec3 scattering = sqrt(u_hair.baseColor)*((dot(n,l)+1)/(4*PI))*pow(u_hair.baseColor/getLuminance(u_scene.lightColor),vec3(1-computeShadow()));
+  vec3 scattering = sqrt(u_hair.baseColor)*((dot(n,l)+1)/(4*PI))*(u_hair.baseColor/getLuminance(u_scene.lightColor))*pow(1,1-computeShadow());
   return scattering;
+
+//   We used ideas from the Agni’s Philosophy demo
+// We don’t author a normal and use this fake normal instead.
+// It is theoretically better to have an actual normal either authored, calculated by
+// tracing similar to bent normals or derived from a filtered distance field of the
+// volume.
+// In my tests I found little extra benefit from an authored normal when filtered
+// shadowing was applied. Skipping authoring nice normals both saves artist time
+// and gbuffer space.
+// u from the diagram many slides ago is a vector parallel to the hair fiber
+// The rest of the scattering approximation is a wrapped Lambert, and an
+// absorption based on the direct light path length through the hair volume.
+// That path length is derived from the exponential shadow value.
+// This is all a giant artistic hack and not physically based in the slightest. It was
+// derived by looking at photos, not ground truth renders. Future work would be
+// to implement this direct light model in a path tracer and see what
+// approximations could be made with no bounces to match the multi bounc
 
   //NOTAS
   //r. Asumamos que es una reflexion del vector incidente sobre la shading normal
@@ -365,10 +386,10 @@ void main() {
     vec3 color  = computeLighting();
     if(u_scene.castShadow==1.0) //If light cast shadows
         color*= 1.0 - computeShadow();
-      // color*=multipleScattering();
+    // color*=multipleScattering();
 
     vec3 ambient = (u_scene.ambientIntensity * 0.1 * u_scene.ambientColor) * u_hair.baseColor ;
-    // color+=ambient;
+    color+=ambient;
 
     //Tone Up
     // color = color / (color + vec3(1.0));

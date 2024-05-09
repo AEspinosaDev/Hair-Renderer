@@ -1,4 +1,4 @@
-#shader vertex
+#stage vertex
 #version 460 core
 
 layout(location = 0) in vec3 position;
@@ -18,7 +18,7 @@ void main() {
     gl_Position = u_scene.lightViewProj  * u_model * vec4(position, 1.0);
 }
 
-#shader fragment
+#stage fragment
 #version 460 core
 
 void main() {

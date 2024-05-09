@@ -1,4 +1,4 @@
-#shader vertex
+#stage vertex
 #version 460 core
 
 layout(location = 0) in vec3 position;
@@ -15,7 +15,7 @@ void main() {
     v_tangent = normalize(mat3(transpose(inverse(u_model))) * tangent);
 }
 
-#shader geometry
+#stage geometry
 #version 460 core
 
 layout(lines) in;
@@ -71,7 +71,7 @@ void main() {
 
 }
 
-#shader fragment
+#stage fragment
 #version 460 core
 
 in vec3 g_pos;

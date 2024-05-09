@@ -20,8 +20,6 @@
 		__builtin_trap();
 #endif
 
-
-
 #define GL_CHECK(x) \
 	GLclearError(); \
 	x;              \
@@ -39,6 +37,7 @@
 #define GLIB_NAMESPACE_BEGIN \
 	namespace glib           \
 	{
+
 #define GLIB_NAMESPACE_END }
 #define USING_NAMESPACE_GLIB using namespace glib;
 
@@ -48,30 +47,47 @@ bool GLlogCall(const char *function, const char *file, int line);
 
 struct Extent2D
 {
-    int width{0};
-    int height{0};
+	int width{0};
+	int height{0};
 
-	inline bool operator==(Extent2D o){
+	inline bool operator==(Extent2D o)
+	{
 		return width == o.width && height == o.height;
 	}
-	inline bool operator!=(Extent2D o){
+	inline bool operator!=(Extent2D o)
+	{
 		return width != o.width && height != o.height;
 	}
 };
 struct Position2D
 {
-    int x{0};
-    int y{0};
+	int x{0};
+	int y{0};
 
-	inline bool operator==(Position2D o){
+	inline bool operator==(Position2D o)
+	{
 		return x == o.x && y == o.y;
 	}
-	inline bool operator!=(Position2D o){
+	inline bool operator!=(Position2D o)
+	{
 		return x != o.x && y != o.y;
 	}
 };
+struct Extent3D
+{
+	int width{0};
+	int height{0};
+	int depth{0};
 
-
+	inline bool operator==(Extent3D o)
+	{
+		return width == o.width && height == o.height && depth == o.depth;
+	}
+	inline bool operator!=(Extent3D o)
+	{
+		return width != o.width || height != o.height || depth != o.depth;
+	}
+};
 
 typedef enum DepthFuncType
 {
@@ -106,13 +122,14 @@ typedef enum BlendOperationType
 	MAX = GL_MAX,
 } BlendOperationType;
 
-typedef enum TextureType{
+typedef enum TextureType
+{
 	TEXTURE_2D = GL_TEXTURE_2D,
 	TEXTURE_2D_MULTISAMPLE = GL_TEXTURE_2D_MULTISAMPLE,
 	TEXTURE_2D_ARRAY = GL_TEXTURE_2D_ARRAY,
 	TEXTURE_2D_MULRISAMPLE_ARRAY = GL_TEXTURE_2D_MULTISAMPLE_ARRAY,
 	TEXTURE_3D = GL_TEXTURE_3D,
 	TEXTURE_CUBEMAP = GL_TEXTURE_CUBE_MAP
-}TextureType;
+} TextureType;
 
 #endif

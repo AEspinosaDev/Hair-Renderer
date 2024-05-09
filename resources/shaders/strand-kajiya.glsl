@@ -1,4 +1,4 @@
-#shader vertex
+#stage vertex
 #version 460 core
 
 layout(location = 0) in vec3 position;
@@ -23,7 +23,7 @@ void main() {
 
 }
 
-#shader geometry
+#stage geometry
 #version 460 core
 
 // #define NORMAL_MAPPING
@@ -113,7 +113,7 @@ void main() {
 
 }
 
-#shader fragment
+#stage fragment
 #version 460 core
 
 // #define NORMAL_MAPPING
