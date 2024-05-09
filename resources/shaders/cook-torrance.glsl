@@ -69,6 +69,7 @@ layout (binding = 1) uniform Scene
 
 uniform vec3 u_albedo;
 uniform sampler2D u_shadowMap;
+uniform sampler2D u_albedoMap;
 
 out vec4 FragColor;
 

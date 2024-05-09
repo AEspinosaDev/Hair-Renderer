@@ -43,25 +43,54 @@ void Texture::setup() const
             m_image.data));
         break;
     case TEXTURE_2D_MULTISAMPLE:
-        GL_CHECK(glTexImage2DMultisample(TEXTURE_2D_MULTISAMPLE,
-                                         m_config.samples,
-                                         m_config.internalFormat,
-                                         m_extent.width,
-                                         m_extent.height,
-                                         GL_TRUE));
+        GL_CHECK(glTexImage2DMultisample(
+            TEXTURE_2D_MULTISAMPLE,
+            m_config.samples,
+            m_config.internalFormat,
+            m_extent.width,
+            m_extent.height,
+            GL_TRUE));
         break;
     case TEXTURE_2D_MULRISAMPLE_ARRAY:
-        GL_CHECK(glTexImage3DMultisample(m_config.type,
-                                         m_config.samples,
-                                         m_config.internalFormat,
-                                         m_extent.width,
-                                         m_extent.height,
-                                         m_config.layers,
-                                         GL_TRUE));
+        GL_CHECK(glTexImage3DMultisample(
+            m_config.type,
+            m_config.samples,
+            m_config.internalFormat,
+            m_extent.width,
+            m_extent.height,
+            m_config.layers,
+            GL_TRUE));
         break;
     case TEXTURE_CUBEMAP:
-        // TBD...
+        int faceWidth = m_extent.width / 4;   // Each face is 1/4 of the total width
+        int faceHeight = m_extent.height / 4; // Each face is 1/3 of the total height
+
+        // Upload each face to the cubemap texture
+        for (int i = 0; i < 6; i++)
+        {
+            int xOffset = i * faceWidth;
+            int yOffset = 1 * faceHeight; 
+            
+            GL_CHECK(glTexImage2D(
+                GL_TEXTURE_CUBE_MAP_POSITIVE_X + i,
+                m_config.level,
+                m_config.internalFormat, //At least GL_RGB16F
+                512,
+                512,
+                m_config.border,
+                m_config.format, //GL_RGB
+                m_config.dataType, //GL_FLOAT
+                m_image.HDRdata));
+        }
         break;
+    }
+
+    if (m_config.freeImageCacheOnGenerate)
+    {
+        if (m_image.data)
+            free(m_image.data);
+        if (m_image.HDRdata)
+            free(m_image.HDRdata);
     }
 
     if (m_config.type != TEXTURE_2D_MULTISAMPLE && m_config.type != TEXTURE_2D_MULRISAMPLE_ARRAY)

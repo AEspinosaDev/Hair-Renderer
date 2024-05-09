@@ -1,5 +1,6 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #define TINYPLY_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
 #include "loaders.h"
 
 GLIB_NAMESPACE_BEGIN
@@ -356,5 +357,65 @@ void loaders::load_PLY(Mesh *const mesh, const char *fileName, bool preload, boo
         std::cerr << "Caught tinyply exception: " << e.what() << std::endl;
     }
 }
+
+void loaders::load_image(Texture *const texture, const char *fileName)
+{
+    Image img = texture->get_image();
+    img.path = fileName;
+    if (img.data || img.HDRdata)
+        DEBUG_LOG("Image data already in texture");
+
+    // Check extension
+    const std::string PNG = "png";
+    const std::string JPG = "jpg";
+    const std::string HDR = "hdr";
+    const std::string EXR = "exr";
+
+    int desiredChannels = 4;
+
+    std::string fileNameStr(fileName);
+    size_t dotPosition = fileNameStr.find_last_of(".");
+    std::string fileExtension = "";
+
+    // Set file extension for further checks
+    if (dotPosition != std::string::npos)
+        fileExtension = fileNameStr.substr(dotPosition + 1);
+
+    int w, h;
+    if (fileExtension != HDR && fileExtension != EXR) // If not HDR Image
+    {
+        if (fileExtension == PNG)
+            desiredChannels = 4;
+        if (fileExtension == JPG)
+            desiredChannels = 3;
+
+        unsigned char *cache = stbi_load(fileName, &w, &h, &img.channels, desiredChannels);
+        if (cache == nullptr)
+        {
+            ERR_LOG(stbi_failure_reason());
+            return;
+        }
+
+        img.data = cache;
+    }
+    else
+    { // If HDR Image
+
+        float *HDRcache = stbi_loadf(fileName, &w, &h, &img.channels, 0);
+
+        if (HDRcache == nullptr)
+        {
+            ERR_LOG(stbi_failure_reason());
+            return;
+        }
+
+        img.HDRdata = HDRcache; //Fill float pointer, for having higher color precission
+    }
+
+    // Update texture
+    texture->set_extent({w, h});
+    texture->set_image(img);
+}
+
 
 GLIB_NAMESPACE_END

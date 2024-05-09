@@ -14,6 +14,7 @@ void HairRenderer::init()
     m_controller = new Controller(m_camera);
 
     m_vignette = Mesh::create_screen_quad();
+    m_skybox = Mesh::create_cube();
 
     m_hair = new Mesh();
     m_head = new Mesh();
@@ -118,6 +119,29 @@ void HairRenderer::init()
     screenMaterial->set_texture("u_frame", m_multisampledFBO->get_attachments().front().texture);
     m_vignette->set_material(screenMaterial);
 
+    GraphicPipeline skyboxPipeline{};
+    skyboxPipeline.shader = new Shader("resources/shaders/skybox.glsl", ShaderType::UNLIT);
+    skyboxPipeline.state.depthWrites = false;
+
+    Material *skyboxMaterial = new Material(skyboxPipeline);
+
+    TextureConfig skymapConfig{};
+    skymapConfig.type = TextureType::TEXTURE_CUBEMAP;
+    skymapConfig.format = GL_RGB;
+    skymapConfig.internalFormat = GL_RGB16F;
+    skymapConfig.dataType = GL_FLOAT;
+    skymapConfig.anisotropicFilter = false;
+    skymapConfig.wrapS = GL_CLAMP_TO_EDGE;
+    skymapConfig.wrapT = GL_CLAMP_TO_EDGE;
+    skymapConfig.wrapR = GL_CLAMP_TO_EDGE;
+
+    Texture *skymap = new Texture(skymapConfig);
+    loaders::load_image(skymap, "resources/images/skymap.hdr");
+    skymap->generate();
+    skyboxMaterial->set_texture("u_skymap", skymap);
+
+    m_skybox->set_material(skyboxMaterial);
+
 #pragma endregion
 
 #pragma region MESH LOADING
@@ -143,6 +167,10 @@ void HairRenderer::init()
         loadThread1.detach();
     }
 #endif
+
+    // Texture *floorTexture = new Texture();
+    // loaders::load_image(floorTexture, "resources/images/terrain.jpg");
+
 #pragma endregion
 }
 
@@ -195,6 +223,13 @@ void HairRenderer::forward_pass()
     resize_viewport(m_window.extent);
 
     // ----- Draw ----
+
+    MaterialUniforms skyu;
+    skyu.mat4Types["u_viewProj"] = m_camera->get_projection() * glm::mat4(glm::mat3(m_camera->get_view()));
+    m_skybox->get_material()->set_uniforms(skyu);
+
+    m_skybox->draw();
+
 
     MaterialUniforms headu;
     headu.mat4Types["u_model"] = m_head->get_model_matrix();

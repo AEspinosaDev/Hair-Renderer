@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <tiny_obj_loader.h>
 #include <tinyply.h>
+#include <stb_image.h>
 #include "mesh.h"
 #include "utils.h"
 
@@ -17,6 +18,8 @@ namespace loaders
     void load_OBJ(Mesh *const mesh, const char *fileName, bool importMaterials = false, bool calculateTangents = false);
 
     void load_PLY(Mesh *const mesh, const char *fileName, bool preload = true, bool verbose = false, bool calculateTangents = false);
+
+    void load_image(Texture* const texture, const char *fileName);
     
 }
 

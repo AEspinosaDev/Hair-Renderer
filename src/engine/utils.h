@@ -11,6 +11,17 @@ GLIB_NAMESPACE_BEGIN
 
 namespace utils
 {
+    struct HDRIConverter{
+        Texture* textue;
+
+        HDRIConverter(Texture* text): texture(text){}
+
+
+        void convert();
+
+
+
+    };
 
     struct EventDispatcher
     {

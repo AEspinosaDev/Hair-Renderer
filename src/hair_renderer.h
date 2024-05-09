@@ -33,6 +33,7 @@ private:
     Mesh *m_head;
     Mesh *m_floor;
     Mesh* m_vignette;
+    Mesh* m_skybox;
 
     struct LightData
     {

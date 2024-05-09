@@ -81,7 +81,6 @@ public:
 
     static Mesh* create_cube();
 
-    static Mesh* create_quad();
 };
 
 

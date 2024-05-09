@@ -30,11 +30,15 @@ struct TextureConfig
     int wrapR{GL_REPEAT};
 
     glm::vec4 borderColor{glm::vec4(0.0f)};
+
+    bool freeImageCacheOnGenerate{true};
 };
 struct Image
 {
     std::string path{""};
     unsigned char *data{nullptr};
+    float *HDRdata{nullptr};
+    int channels{0};
 };
 
 class Texture
@@ -55,8 +59,8 @@ protected:
 public:
     Texture(Extent2D extent) : m_extent(extent) {}
     Texture(Extent2D extent, TextureConfig config) : m_extent(extent), m_config(config) {}
-    Texture(std::string imagePath) : m_image({imagePath, nullptr}) {}
-    Texture(std::string imagePath, TextureConfig config) : m_image({imagePath, nullptr}), m_config(config) {}
+    Texture(TextureConfig config) : m_config(config) {}
+    Texture() {}
     ~Texture()
     {
         GL_CHECK(glDeleteTextures(1, &m_id));
