@@ -135,8 +135,8 @@ void HairRenderer::init()
     skymapConfig.wrapT = GL_CLAMP_TO_EDGE;
     skymapConfig.wrapR = GL_CLAMP_TO_EDGE;
 
-    Texture *skymap = new Texture(skymapConfig);
-    loaders::load_image(skymap, "resources/images/skymap.hdr");
+    Texture *skymap = new Texture({2048, 2048}, skymapConfig);
+    loaders::load_image(skymap, "resources/images/skymap.hdr", true);
     skymap->generate();
     skyboxMaterial->set_texture("u_skymap", skymap);
 
@@ -229,7 +229,6 @@ void HairRenderer::forward_pass()
     m_skybox->get_material()->set_uniforms(skyu);
 
     m_skybox->draw();
-
 
     MaterialUniforms headu;
     headu.mat4Types["u_model"] = m_head->get_model_matrix();

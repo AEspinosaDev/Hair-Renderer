@@ -40,11 +40,7 @@ class Framebuffer
 
 public:
     Framebuffer(Extent2D extent, std::vector<Attachment> attachments, unsigned int samples = 1) : m_extent(extent), m_attachments(attachments), m_samples(samples) {}
-    ~Framebuffer()
-    {
-        GL_CHECK(glDeleteFramebuffers(1, &m_id));
-        // delete m_attachments;
-    };
+    ~Framebuffer() { cleanup(); };
 
     inline unsigned int get_id() const { return m_id; }
 
@@ -71,13 +67,18 @@ public:
 
     void unbind() const;
 
+    inline void cleanup()
+    {
+        GL_CHECK(glDeleteFramebuffers(1, &m_id));
+    }
+
     /*
     Copy source framebuffer data to the destiny framebuffer. If framebuffer pointer is set to null,
     it will use the defalt framebuffer
     */
     static void blit(const Framebuffer *const src, const Framebuffer *const dst, unsigned int mask, unsigned int filter,
-              Extent2D srcExtent, Extent2D dstExtent,
-              Position2D srcOrigin = {0, 0}, Position2D dstOrigin = {0, 0});
+                     Extent2D srcExtent, Extent2D dstExtent,
+                     Position2D srcOrigin = {0, 0}, Position2D dstOrigin = {0, 0});
 
     static void bind_default();
 

@@ -23,7 +23,8 @@ enum ShaderType
 {
     LIT,
     UNLIT,
-    COMPUTE
+    COMPUTE,
+    OTHER
 };
 
 /*

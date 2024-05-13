@@ -19,7 +19,7 @@ namespace loaders
 
     void load_PLY(Mesh *const mesh, const char *fileName, bool preload = true, bool verbose = false, bool calculateTangents = false);
 
-    void load_image(Texture* const texture, const char *fileName);
+    void load_image(Texture* const texture, const char *fileName, bool isPanorama = false);
     
 }
 

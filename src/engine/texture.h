@@ -2,6 +2,8 @@
 #define __TEXTURE__
 
 #include "core.h"
+#include "shader.h"
+#include "utils.h"
 
 GLIB_NAMESPACE_BEGIN
 
@@ -36,9 +38,16 @@ struct TextureConfig
 struct Image
 {
     std::string path{""};
+
     unsigned char *data{nullptr};
     float *HDRdata{nullptr};
+    Extent2D extent{0,0}; //Does not need to corresoong with texture extent;
+
+    bool linear{true};
     int channels{0};
+
+    bool panorama{false};
+    
 };
 
 class Texture
@@ -54,17 +63,17 @@ protected:
 
     bool m_generated{false};
 
-    void setup() const;
+    void setup();
+
+    void panorama_to_cubemap();
+    static Shader *HDRIConverterShader;
 
 public:
     Texture(Extent2D extent) : m_extent(extent) {}
     Texture(Extent2D extent, TextureConfig config) : m_extent(extent), m_config(config) {}
     Texture(TextureConfig config) : m_config(config) {}
     Texture() {}
-    ~Texture()
-    {
-        GL_CHECK(glDeleteTextures(1, &m_id));
-    }
+    ~Texture() { cleanup(); }
 
     void generate();
 
@@ -87,6 +96,11 @@ public:
     virtual void resize(Extent2D extent);
 
     inline bool is_generated() const { return m_generated; }
+
+    inline void cleanup()
+    {
+        GL_CHECK(glDeleteTextures(1, &m_id));
+    }
 };
 
 GLIB_NAMESPACE_END

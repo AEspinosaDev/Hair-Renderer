@@ -358,10 +358,12 @@ void loaders::load_PLY(Mesh *const mesh, const char *fileName, bool preload, boo
     }
 }
 
-void loaders::load_image(Texture *const texture, const char *fileName)
+void loaders::load_image(Texture *const texture, const char *fileName, bool isPanorama)
 {
     Image img = texture->get_image();
     img.path = fileName;
+    img.panorama = isPanorama;
+
     if (img.data || img.HDRdata)
         DEBUG_LOG("Image data already in texture");
 
@@ -384,18 +386,14 @@ void loaders::load_image(Texture *const texture, const char *fileName)
     int w, h;
     if (fileExtension != HDR && fileExtension != EXR) // If not HDR Image
     {
-        if (fileExtension == PNG)
-            desiredChannels = 4;
-        if (fileExtension == JPG)
-            desiredChannels = 3;
-
-        unsigned char *cache = stbi_load(fileName, &w, &h, &img.channels, desiredChannels);
+        unsigned char *cache = stbi_load(fileName, &w, &h, &img.channels, 0);
         if (cache == nullptr)
         {
             ERR_LOG(stbi_failure_reason());
             return;
         }
 
+        img.linear = true;
         img.data = cache;
     }
     else
@@ -409,13 +407,16 @@ void loaders::load_image(Texture *const texture, const char *fileName)
             return;
         }
 
-        img.HDRdata = HDRcache; //Fill float pointer, for having higher color precission
+        img.linear = false;
+        img.HDRdata = HDRcache; // Fill float pointer, for having higher color precission
     }
 
+    img.extent = {w, h};
+    if (!isPanorama)
+        texture->set_extent(img.extent);
+
     // Update texture
-    texture->set_extent({w, h});
     texture->set_image(img);
 }
-
 
 GLIB_NAMESPACE_END

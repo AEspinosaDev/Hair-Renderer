@@ -6,4 +6,5 @@ glm::vec3 utils::get_tangent_gram_smidt(glm::vec3 &p1, glm::vec3 &p2, glm::vec3 
 {
     return glm::vec3();
 }
+
 GLIB_NAMESPACE_END
