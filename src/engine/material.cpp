@@ -49,6 +49,7 @@ void Material::setup_pipeline() const
 {
     glCullFace(m_pipeline.state.cullFace);
     m_pipeline.state.depthTest ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
+    glDepthFunc(m_pipeline.state.depthFunction);
     glDepthMask(m_pipeline.state.depthWrites);
     if (m_pipeline.state.blending)
     {

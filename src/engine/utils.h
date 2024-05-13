@@ -175,8 +175,14 @@ namespace utils
 	void main(void)
 	{
 	    fragmentColor = vec4(0.0, 0.0, 0.0, 1.0);
+
+        vec3 color =panoramaToCubeMap(u_currentFace, texCoord);
+        color = color / (color + vec3(1.0));
+
+        const float GAMMA = 2.2;
+        color = pow(color, vec3(1.0 / GAMMA));
 	
-		fragmentColor.rgb = panoramaToCubeMap(u_currentFace, texCoord);
+		fragmentColor.rgb = color;
 	}
 )";
 

@@ -65,7 +65,11 @@ protected:
 
     void setup();
 
+    /*
+    Utily function in case a panorama image is loaded. It converts it to a usable cubemap format.
+    */
     void panorama_to_cubemap();
+
     static Shader *HDRIConverterShader;
 
 public:

@@ -120,15 +120,16 @@ void HairRenderer::init()
     m_vignette->set_material(screenMaterial);
 
     GraphicPipeline skyboxPipeline{};
-    skyboxPipeline.shader = new Shader("resources/shaders/skybox.glsl", ShaderType::UNLIT);
-    skyboxPipeline.state.depthWrites = false;
+    skyboxPipeline.shader = new Shader("resources/shaders/skybox.glsl", ShaderType::OTHER);
+    // skyboxPipeline.state.depthWrites = false;
+    skyboxPipeline.state.depthFunction = DepthFuncType::LEQUAL;
 
     Material *skyboxMaterial = new Material(skyboxPipeline);
 
     TextureConfig skymapConfig{};
     skymapConfig.type = TextureType::TEXTURE_CUBEMAP;
     skymapConfig.format = GL_RGB;
-    skymapConfig.internalFormat = GL_RGB16F;
+    skymapConfig.internalFormat = GL_RGB32F;
     skymapConfig.dataType = GL_FLOAT;
     skymapConfig.anisotropicFilter = false;
     skymapConfig.wrapS = GL_CLAMP_TO_EDGE;
@@ -136,7 +137,7 @@ void HairRenderer::init()
     skymapConfig.wrapR = GL_CLAMP_TO_EDGE;
 
     Texture *skymap = new Texture({2048, 2048}, skymapConfig);
-    loaders::load_image(skymap, "resources/images/skymap.hdr", true);
+    loaders::load_image(skymap, "resources/images/room.hdr", true);
     skymap->generate();
     skyboxMaterial->set_texture("u_skymap", skymap);
 
@@ -224,12 +225,6 @@ void HairRenderer::forward_pass()
 
     // ----- Draw ----
 
-    MaterialUniforms skyu;
-    skyu.mat4Types["u_viewProj"] = m_camera->get_projection() * glm::mat4(glm::mat3(m_camera->get_view()));
-    m_skybox->get_material()->set_uniforms(skyu);
-
-    m_skybox->draw();
-
     MaterialUniforms headu;
     headu.mat4Types["u_model"] = m_head->get_model_matrix();
     headu.vec3Types["u_albedo"] = m_headSettings.skinColor;
@@ -277,6 +272,12 @@ void HairRenderer::forward_pass()
     m_floor->get_material()->set_uniforms(flooru);
 
     m_floor->draw();
+
+    MaterialUniforms skyu;
+    skyu.mat4Types["u_viewProj"] = m_camera->get_projection() * glm::mat4(glm::mat3(m_camera->get_view())); // Take out the transform
+    m_skybox->get_material()->set_uniforms(skyu);
+
+    m_skybox->draw();
 }
 #pragma endregion
 

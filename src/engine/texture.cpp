@@ -16,6 +16,18 @@ void Texture::setup()
 {
     GL_CHECK(glBindTexture(m_config.type, m_id));
 
+    const void *data = nullptr;
+    if (m_image.linear) // Check if image is linear
+    {
+        if (m_image.data)
+            data = static_cast<const void *>(m_image.data);
+    }
+    else
+    {
+        if (m_image.HDRdata)
+            data = static_cast<const void *>(m_image.HDRdata);
+    }
+
     switch (m_config.type)
     {
     case TEXTURE_2D:
@@ -28,7 +40,7 @@ void Texture::setup()
             m_config.border,
             m_config.format,
             m_config.dataType,
-            m_image.data));
+            data));
         break;
 
     case TEXTURE_3D || TEXTURE_2D_ARRAY:
@@ -42,7 +54,7 @@ void Texture::setup()
             m_config.border,
             m_config.format,
             m_config.dataType,
-            m_image.data));
+            data));
         break;
     case TEXTURE_2D_MULTISAMPLE:
         GL_CHECK(glTexImage2DMultisample(
@@ -76,7 +88,7 @@ void Texture::setup()
                 m_config.border,
                 m_config.format,   // GL_RGB
                 m_config.dataType, // GL_FLOAT
-                nullptr));
+                m_image.data || m_image.HDRdata ? data : nullptr));
         }
         break;
     }
@@ -208,7 +220,7 @@ void Texture::panorama_to_cubemap()
         Texture::HDRIConverterShader->unbind();
     }
 
-    //Free temporal resources used
+    // Free temporal resources used
     GL_CHECK(glDeleteTextures(1, &panoramaID));
     GL_CHECK(glDeleteFramebuffers(1, &converterFBO));
 
