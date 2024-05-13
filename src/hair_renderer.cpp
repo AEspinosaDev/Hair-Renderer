@@ -121,7 +121,6 @@ void HairRenderer::init()
 
     GraphicPipeline skyboxPipeline{};
     skyboxPipeline.shader = new Shader("resources/shaders/skybox.glsl", ShaderType::OTHER);
-    // skyboxPipeline.state.depthWrites = false;
     skyboxPipeline.state.depthFunction = DepthFuncType::LEQUAL;
 
     Material *skyboxMaterial = new Material(skyboxPipeline);
@@ -266,12 +265,12 @@ void HairRenderer::forward_pass()
 
     m_light.dummy->draw();
 
-    MaterialUniforms flooru;
-    flooru.mat4Types["u_model"] = m_floor->get_model_matrix();
-    flooru.vec3Types["u_albedo"] = glm::vec3(1.0);
-    m_floor->get_material()->set_uniforms(flooru);
+    // MaterialUniforms flooru;
+    // flooru.mat4Types["u_model"] = m_floor->get_model_matrix();
+    // flooru.vec3Types["u_albedo"] = glm::vec3(1.0);
+    // m_floor->get_material()->set_uniforms(flooru);
 
-    m_floor->draw();
+    // m_floor->draw();
 
     MaterialUniforms skyu;
     skyu.mat4Types["u_viewProj"] = m_camera->get_projection() * glm::mat4(glm::mat3(m_camera->get_view())); // Take out the transform
@@ -297,8 +296,8 @@ void HairRenderer::shadow_pass()
     m_depthPipeline.shader->set_mat4("u_model", m_head->get_model_matrix());
     m_head->draw(false);
 
-    m_depthPipeline.shader->set_mat4("u_model", m_floor->get_model_matrix());
-    m_floor->draw(false);
+    // m_depthPipeline.shader->set_mat4("u_model", m_floor->get_model_matrix());
+    // m_floor->draw(false);
 
     m_depthPipeline.shader->set_mat4("u_model", m_hair->get_model_matrix());
 
@@ -344,7 +343,7 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::ColorEdit3("Base color", (float *)&m_hairSettings.baseColor);
     ImGui::DragFloat("Specular", &m_hairSettings.specular, .05f, 0.0f, 8.0f);
     ImGui::DragFloat("Roughness", &m_hairSettings.roughness, .05f, 0.0f, 1.0f);
-    ImGui::DragFloat("Scatter", &m_hairSettings.scatter, .1f, 0.0f, 5.0f);
+    ImGui::DragFloat("Scatter", &m_hairSettings.scatter, 1.f, 0.0f, 1000.0f);
     ImGui::DragFloat("Shift", &m_hairSettings.shift, -0.05f, 2 * M_PI, M_PI_2);
     ImGui::DragFloat("IOR", &m_hairSettings.ior, 0.01f, 0.0f, 10.0f);
     ImGui::Checkbox("R Lobe", &m_hairSettings.r);

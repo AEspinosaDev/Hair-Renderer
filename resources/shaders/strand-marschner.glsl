@@ -285,9 +285,9 @@ vec3 computeLighting(){
   vec3 TRT = u_hair.trt ? M(sinThetaWi+sinThetaV+u_hair.shift*4,betaTRT)*NTRT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
 
   vec3 albedo = u_hair.baseColor;
-  vec3 specular = (R*u_hair.specular+TT+TRT*u_hair.specular)/(cosThetaD*cosThetaD);
+  vec3 specular = (R*u_hair.specular+TT+TRT*u_hair.specular);
 
-  return (specular+albedo)* radiance;
+  return (specular+albedo) * radiance;
   // return (albedo / PI + specular) * radiance;
 
   //sI QUITO LA NORMALIACION DEL ALBEDO mas o menos todo bien
@@ -310,8 +310,11 @@ float filterPCF(int kernelSize, vec3 coords, float bias) {
     for(int x = -edge; x <= edge; ++x) {
         for(int y = -edge; y <= edge; ++y) {
             float pcfDepth = texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize)).r;
-            float weight = clamp(exp(-u_hair.scatter*(currentDepth-pcfDepth)),0.0,1.0);
-            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
+
+            //Scatter weight
+            float weight = 1.0-clamp(exp(-u_hair.scatter*abs(currentDepth-pcfDepth)*100),0.0,1.0);
+
+            shadow += currentDepth - bias > pcfDepth ? 1.0*weight : 0.0;
         }
     }
     return shadow /= (kernelSize * kernelSize);

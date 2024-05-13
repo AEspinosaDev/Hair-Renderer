@@ -22,7 +22,7 @@ struct HairSettings
         10.0f / 255.0f);
     float specular = 5.0f;
     float roughness = 0.4f;
-    float scatter = 1.0f;
+    float scatter = 9.5f;
     float shift = 0.12f; // In radians (-5º to -10º) => 0.088 to 0.17 //Not with epic 0.02 does fine
     float ior = 1.55f;
 
