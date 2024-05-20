@@ -12,7 +12,7 @@ uniform mat4 u_model;
 
 out vec3 v_color;
 out vec3 v_tangent;
-
+out int v_id;
 
 void main() {
 
@@ -20,6 +20,7 @@ void main() {
 
     v_tangent = normalize(mat3(transpose(inverse(u_model))) * tangent);
     v_color = color;
+    v_id = gl_VertexID;
 
 }
 
@@ -32,6 +33,7 @@ layout(triangle_strip, max_vertices = 4) out;
 
 in vec3 v_color[];
 in vec3 v_tangent[];
+in int v_id[];
 
 layout (binding = 0) uniform Camera
 {
@@ -48,6 +50,7 @@ out vec2 g_uv;
 out vec3 g_dir;
 out vec3 g_color;
 out vec3 g_origin;
+out int g_id;
 
 uniform float u_thickness;
 uniform vec3 u_camPos;
@@ -70,6 +73,7 @@ void emitQuadPoint(vec4 origin,
         g_uv = uv;
         g_normal =  normalize(mat3(transpose(inverse(u_camera.view))) * normal);
         g_origin = (u_camera.view * origin).xyz; 
+        g_id = v_id[0];
 
         EmitVertex();
 }
@@ -99,8 +103,8 @@ void main() {
 
         emitQuadPoint(startPoint,right0,halfLength,dir0,normal0,vec2(1.0,0.0),0);
         emitQuadPoint(endPoint,right1,halfLength,dir1,normal1,vec2(1.0,1.0),1);
-        emitQuadPoint(startPoint,-right0,halfLength,dir0,normal0,vec2(-1.0,0.0),0);
-        emitQuadPoint(endPoint,-right1,halfLength,dir1,normal1,vec2(-1.0,1.0),1);
+        emitQuadPoint(startPoint,-right0,halfLength,dir0,normal0,vec2(0.0,0.0),0);
+        emitQuadPoint(endPoint,-right1,halfLength,dir1,normal1,vec2(0.0,1.0),1);
 
 }
 
@@ -116,6 +120,7 @@ in vec3 g_normal;
 in vec2 g_uv;
 in vec3 g_dir;
 in vec3 g_origin;
+in flat int g_id;
 
 
 layout (binding = 0) uniform Camera
@@ -138,7 +143,7 @@ layout (binding = 1) uniform Scene
     float pcfKernelSize;
     float castShadow;
 
-    float unused;
+    float kernelRadius;
 
     mat4 lightViewProj;
 }u_scene;
@@ -151,6 +156,9 @@ struct HairMaterial{
     float scatter;
     float shift;
     float ior;
+
+    bool glints; 
+
     bool r;
     bool tt;
     bool trt;
@@ -159,6 +167,7 @@ struct HairMaterial{
 uniform float u_thickness;
 uniform HairMaterial u_hair;
 uniform sampler2D u_shadowMap;
+uniform sampler2D u_noiseMap;
 
 vec3 sh_normal;
 float halfLength = u_thickness*0.5f;
@@ -169,26 +178,6 @@ const float PI = 3.14159265359;
 
 out vec4 fragColor;
 
-
-float computePointInCircleSurface(float u,float radius) {
-    return sqrt(1.0 - u * u);
-}
-
-void computeShadingNormal(){
-    float offsetMag = computePointInCircleSurface(g_uv.x,halfLength);
-    vec3 offsetPos = g_pos + g_normal * (halfLength/offsetMag);
-    
-    sh_normal = normalize(offsetPos-g_origin);
-
-}
-float cosTheta(vec3 w,vec3 n){ //Must be normalized
-    return dot(w,n);
-}
-
-float sinTheta(vec3 w, vec3 n){
-  float cos = cosTheta(w,n);
-  return sqrt(1.0-cos*cos); //Trigonometric identity
-}
 
 ///Fresnel
 float fresnelSchlick(float ior, float cosTheta) {
@@ -278,24 +267,24 @@ vec3 computeLighting(){
   float cosThetaD = cos(thetaD);
   float sinThetaD = sin(thetaD);
 
-  // float thetaH = asin(dot(wh,u));
-
   float R = u_hair.r ? M(sinThetaWi+sinThetaV-u_hair.shift*2, betaR )*NR(wi,v,cosPhiD): 0.0; 
   vec3 TT = u_hair.tt ? M(sinThetaWi+sinThetaV+u_hair.shift,betaTT)*NTT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
   vec3 TRT = u_hair.trt ? M(sinThetaWi+sinThetaV+u_hair.shift*4,betaTRT)*NTRT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
 
+  float glint = u_hair.glints ? texture(u_noiseMap, vec2(g_id/50000.0,g_uv.y)).r : 1.0;
+
   vec3 albedo = u_hair.baseColor;
   vec3 specular = (R*u_hair.specular+TT+TRT*u_hair.specular);
 
-  return (specular+albedo) * radiance;
-  // return (albedo / PI + specular) * radiance;
-
-  //sI QUITO LA NORMALIACION DEL ALBEDO mas o menos todo bien
-  //problema hay que mutiplicar muchi el R y TRT
-  //si pongo la normalizacion por el coseno D se vuelven muyy fuertes los coloes en alguos angulos 
-
+  return (specular*glint+albedo) * radiance;
+  
   // return specular/(cosThetaD*cosThetaD)  *radiance;
 
+}
+
+bool isHairShadow(vec2 depthValue){
+    if(depthValue.r == 0.0) return true;
+    return false;
 }
 
 float filterPCF(int kernelSize, vec3 coords, float bias) {
@@ -309,12 +298,12 @@ float filterPCF(int kernelSize, vec3 coords, float bias) {
 
     for(int x = -edge; x <= edge; ++x) {
         for(int y = -edge; y <= edge; ++y) {
-            float pcfDepth = texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize)).r;
+            float pcfDepth = isHairShadow( texture(u_shadowMap,coords.xy).rg) ? texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize* u_scene.kernelRadius*2.0)).g : texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize* u_scene.kernelRadius)).r;
 
             //Scatter weight
             float weight = 1.0-clamp(exp(-u_hair.scatter*abs(currentDepth-pcfDepth)*100),0.0,1.0);
 
-            shadow += currentDepth - bias > pcfDepth ? 1.0*weight : 0.0;
+            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
         }
     }
     return shadow /= (kernelSize * kernelSize);
@@ -343,7 +332,7 @@ float getLuminance(vec3 li){
   return 0.2126*li.r + 0.7152*li.g+0.0722*li.b;
 }
 
-vec3 multipleScattering(){
+vec3 multipleScattering(float shadow){
   
   vec3 l = normalize(u_scene.lightPos.xyz- g_pos);  //Light vector
   vec3 r = normalize(-g_pos);       
@@ -353,7 +342,7 @@ vec3 multipleScattering(){
   vec3 n = normalize(r - u * dot(u,r));
    
 
-  vec3 scattering = sqrt(u_hair.baseColor)*((dot(n,l)+1)/(4*PI))*(u_hair.baseColor/getLuminance(u_scene.lightColor))*pow(1,1-computeShadow());
+  vec3 scattering = pow(u_hair.baseColor/getLuminance(u_scene.lightColor),vec3(shadow));
   return scattering;
 
 //   We used ideas from the Agni’s Philosophy demo
@@ -385,21 +374,19 @@ vec3 multipleScattering(){
 
 void main() {
 
-    computeShadingNormal();
     vec3 color  = computeLighting();
     if(u_scene.castShadow==1.0) //If light cast shadows
         color*= 1.0 - computeShadow();
     // color*=multipleScattering();
 
-    vec3 ambient = (u_scene.ambientIntensity * 0.1 * u_scene.ambientColor) * u_hair.baseColor ;
+    vec3 ambient = (u_scene.ambientIntensity * u_scene.ambientColor) * u_hair.baseColor ;
     color+=ambient;
 
     //Tone Up
     // color = color / (color + vec3(1.0));
-
-    // //Gamma Correction
+    //Gamma Correction
     // const float GAMMA = 2.2;
-    // color = pow(color, vec3(1.0 / GAMMA));
+    //color = pow(color, vec3(1.0 / GAMMA));
 
     fragColor = vec4(color,1.0f);
 

@@ -14,7 +14,7 @@ struct UserInterfaceSettings
 };
 struct HairSettings
 {
-    float thickness = 0.004f;
+    float thickness = 0.002f;
 #ifdef MARSCHNER
     glm::vec3 baseColor = glm::vec3(
         68.0f / 255.0f,
@@ -29,6 +29,8 @@ struct HairSettings
     bool r = true;
     bool tt = true;
     bool trt = true;
+
+    bool glints = true;
 #else
     // glm::vec3 color = glm::vec3(0.95f, 0.65f, 0.16f);
     glm::vec3 color = glm::vec3(0.6f, 0.078f, 0.078f);
@@ -40,14 +42,18 @@ struct HairSettings
 };
 struct HeadSettings
 {
-
-    glm::vec3 skinColor = glm::vec3(0.84f, 0.25f, 0.125f);
+    glm::vec3 skinColor = glm::vec3(
+        225.0f / 255.0f,
+        94.0f / 255.0f,
+        66.0f / 255.0f);
+    bool useAlbedoTexture = false;
 };
 struct GlobalSettings
 {
     bool showUI{true};
     glm::vec3 ambientColor = glm::vec3(1.0f);
     float ambientStrength = 0.3f;
+    float enviromentRotation = 0.0f;
     Extent2D shadowExtent = {2048, 2048};
     unsigned int samples = 16;
 };

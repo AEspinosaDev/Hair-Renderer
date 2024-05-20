@@ -39,6 +39,7 @@ private:
     {
         PointLight *light{nullptr};
         Mesh *dummy{nullptr};
+        bool animated{true};
 
         void set_position(glm::vec3 p)
         {
@@ -79,10 +80,13 @@ private:
     //--- Framebuffer and shading data ---
 
     GraphicPipeline m_depthPipeline{};
-    // GraphicPipeline m_strandDepthPipeline{};
+    GraphicPipeline m_noisePipeline{};
+    GraphicPipeline m_fxaaPipeline{};
 
-    Framebuffer* m_multisampledFBO;
+    Framebuffer* m_noiseFBO;
+    Framebuffer* m_forwardFBO;
     Framebuffer *m_shadowFBO;
+    Framebuffer *m_fxaaFBO;
 
     //--- Settings ---
 
@@ -106,7 +110,9 @@ private:
 
     void shadow_pass();
 
-    void screen_pass();
+    void postprocess_pass();
+
+    void noise_pass();
 
 #pragma region INPUT
     void key_callback(GLFWwindow *w, int a, int b, int c, int d)
@@ -125,6 +131,10 @@ private:
         {
             // m_showUI = m_showUI ? false : true;
         }
+        if (glfwGetKey(m_window.ptr, GLFW_KEY_L) == GLFW_PRESS)
+        {
+            m_light.animated = m_light.animated ? false : true;
+        }
     }
     void mouse_callback(GLFWwindow *w, double x, double y)
     {
@@ -135,7 +145,7 @@ private:
     {
         m_camera->set_projection(width, height);
         resize({width, height});
-        m_multisampledFBO->resize({width, height});
+        m_forwardFBO->resize({width, height});
     }
 
 #pragma endregion

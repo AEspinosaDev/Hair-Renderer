@@ -154,6 +154,12 @@ void Texture::resize(Extent2D extent)
         setup();
 }
 
+void Texture::generate_mipmaps()
+{
+    bind();
+    GL_CHECK(glGenerateMipmap(m_config.type));
+}
+
 void Texture::panorama_to_cubemap()
 {
     if (!Texture::HDRIConverterShader) // If null, create utility converter shader

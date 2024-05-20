@@ -14,6 +14,7 @@ layout (binding = 1) uniform Scene
 
 uniform mat4 u_model;
 
+
 void main() {
     gl_Position = u_scene.lightViewProj  * u_model * vec4(position, 1.0);
 }
@@ -21,6 +22,11 @@ void main() {
 #stage fragment
 #version 460 core
 
+uniform bool u_isHair;
+
+out vec2 fragColor;
+
 void main() {
-    //void
+
+    fragColor = u_isHair ? vec2(0.0,gl_FragCoord.z) : vec2(gl_FragCoord.z,0.0);
 }

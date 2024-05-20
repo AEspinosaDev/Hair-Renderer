@@ -106,6 +106,12 @@ void gui::draw_light_widget(Light *l)
             shadow.pcfKernel = kernel;
             l->set_shadow_config(shadow);
         }
+        float rad = shadow.kernelRadius;
+        if (ImGui::DragFloat("Kernel Radius", &rad, 0.1, 1.0, 10.0))
+        {
+            shadow.kernelRadius = rad;
+            l->set_shadow_config(shadow);
+        }
     }
 
     ImGui::Spacing();

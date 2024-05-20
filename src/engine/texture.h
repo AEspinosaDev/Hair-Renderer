@@ -105,6 +105,8 @@ public:
     {
         GL_CHECK(glDeleteTextures(1, &m_id));
     }
+
+    void generate_mipmaps();
 };
 
 GLIB_NAMESPACE_END

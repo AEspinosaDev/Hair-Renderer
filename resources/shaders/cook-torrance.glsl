@@ -35,7 +35,7 @@ void main() {
 
     _color = color;
 
-    _uv = uv;
+    _uv = vec2(uv.x, 1-uv.y);
 
     gl_Position = u_camera.viewProj  * u_model * vec4(position, 1.0);
 
@@ -62,7 +62,7 @@ layout (binding = 1) uniform Scene
     float pcfKernelSize;
     float castShadow;
 
-    float unused;
+    float filterRadius;
 
     mat4 lightViewProj;
 }u_scene;
@@ -70,6 +70,7 @@ layout (binding = 1) uniform Scene
 uniform vec3 u_albedo;
 uniform sampler2D u_shadowMap;
 uniform sampler2D u_albedoMap;
+uniform bool u_hasAlbedoTex;
 
 out vec4 FragColor;
 
@@ -159,7 +160,12 @@ vec3 computeLighting() {
     return (kD * s.albedo / PI + specular) * radiance * lambertian;
 
 }
-float filterPCF(int kernelSize, vec3 coords, float bias) {
+bool isHairShadow(vec2 depthValue){
+    if(depthValue.r == 0.0) return true;
+    return false;
+}
+
+float filterPCF(int kernelSize, vec3 coords, float bias, bool isHair) {
 
     int edge = kernelSize / 2;
     vec2 texelSize = 1.0 / textureSize(u_shadowMap, 0);
@@ -170,7 +176,12 @@ float filterPCF(int kernelSize, vec3 coords, float bias) {
 
     for(int x = -edge; x <= edge; ++x) {
         for(int y = -edge; y <= edge; ++y) {
-            float pcfDepth = texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize)).r;
+            //float pcfDepth = isHairShadow( texture(u_shadowMap,vec2(coords.xy + vec2(x, y) * texelSize)).rg) ? texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize* u_scene.filterRadius)).g : texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize* u_scene.filterRadius)).r;
+    // float pcfDepth;
+    //         // if(!isHair)
+    //              pcfDepth = texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize * u_scene.filterRadius)).r;
+                // else
+            float pcfDepth = texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize * u_scene.filterRadius)).r;
             shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;
         }
     }
@@ -178,7 +189,7 @@ float filterPCF(int kernelSize, vec3 coords, float bias) {
 
 }
 
-float computeShadow(){
+float computeShadow(bool isHair){
 
     vec4 posLightSpace = u_scene.lightViewProj * vec4(_modelPos, 1.0);
 
@@ -192,7 +203,7 @@ float computeShadow(){
     vec3 lightDir = normalize(u_scene.lightPos.xyz - _pos);
     float bias = max(u_scene.shadowBias *  5.0 * (1.0 - dot(s.normal, lightDir)),u_scene.shadowBias);  //Modulate by angle of incidence
    
-    return filterPCF(int(u_scene.pcfKernelSize), projCoords,bias);
+    return filterPCF(int(u_scene.pcfKernelSize), projCoords,bias, isHair);
 
 }
 
@@ -201,7 +212,7 @@ void main() {
 
     //Fill surface data
     s.normal = _normal;
-    s.albedo = u_albedo;
+    s.albedo = u_hasAlbedoTex ? (texture(u_albedoMap, _uv).rgb) : u_albedo;
     s.opacity = 1.0;
     s.roughness = 0.8;
     s.metalness = 0.0;
@@ -209,7 +220,7 @@ void main() {
 
     vec3 color = computeLighting();
     if(u_scene.castShadow==1.0) //If light cast shadows
-        color*= 1.0 - computeShadow();
+        color*= 1.0 - computeShadow(false);
 
     //Ambient component
     vec3 ambient = (u_scene.ambientIntensity * 0.1 * u_scene.ambientColor) * s.albedo * s.ao;

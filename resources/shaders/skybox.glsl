@@ -4,6 +4,7 @@
 layout(location = 0) in vec3 position;
 
 uniform mat4 u_viewProj;
+uniform mat4 u_model;
 
 out vec3 _uv;
 
@@ -11,7 +12,7 @@ out vec3 _uv;
 void main()
 {
     _uv  = position;
-    vec4 outPos = u_viewProj * vec4(position, 1.0);
+    vec4 outPos = u_viewProj * u_model * vec4(position, 1.0);
     gl_Position = outPos.xyww;
 }  
 

@@ -24,10 +24,11 @@ struct ShadowConfig
     float fov{60.0f};
     glm::vec3 target{0.0f, 0.0f, 0.0f};
 
-    float bias{0.0001f};
+    // float bias{0.0001f};
+    float bias{0.00025f};
     bool angleDependableBias{false};
     int pcfKernel{7};
-
+    float kernelRadius{2.0};
     // Texture *map;
 };
 

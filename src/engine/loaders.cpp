@@ -237,6 +237,16 @@ void loaders::load_PLY(Mesh *const mesh, const char *fileName, bool preload, boo
                 std::cerr << "tinyply exception: " << e.what() << std::endl;
         }
 
+        try
+        {
+            texcoords = file.request_properties_from_element("vertex", {"s", "t"});
+        }
+        catch (const std::exception &e)
+        {
+            if (verbose)
+                std::cerr << "tinyply exception: " << e.what() << std::endl;
+        }
+
         // Providing a list size hint (the last argument) is a 2x performance improvement. If you have
         // arbitrary ply files, it is best to leave this 0.
         try
@@ -381,12 +391,19 @@ void loaders::load_image(Texture *const texture, const char *fileName, bool isPa
 
     // Set file extension for further checks
     if (dotPosition != std::string::npos)
+    {
         fileExtension = fileNameStr.substr(dotPosition + 1);
+
+        if (fileExtension == PNG)
+            desiredChannels = 4;
+        if (fileExtension == JPG)
+            desiredChannels = 3;
+    }
 
     int w, h;
     if (fileExtension != HDR && fileExtension != EXR) // If not HDR Image
     {
-        unsigned char *cache = stbi_load(fileName, &w, &h, &img.channels, 0);
+        unsigned char *cache = stbi_load(fileName, &w, &h, &img.channels, desiredChannels);
         if (cache == nullptr)
         {
             ERR_LOG(stbi_failure_reason());
