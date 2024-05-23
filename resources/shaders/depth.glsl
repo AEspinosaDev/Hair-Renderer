@@ -3,30 +3,26 @@
 
 layout(location = 0) in vec3 position;
 
-layout (binding = 1) uniform Scene
+layout (binding = 0) uniform Camera
 {
-    vec4 ambient;
-    vec4 lightPos;
-    vec4 lightColor;
-    vec4 shadowConfig;
-    mat4 lightViewProj;
-}u_scene;
+    mat4 viewProj;
+    mat4 modelView;
+    mat4 view;
+}u_camera;
+
 
 uniform mat4 u_model;
 
 
 void main() {
-    gl_Position = u_scene.lightViewProj  * u_model * vec4(position, 1.0);
+    gl_Position = u_camera.viewProj  * u_model * vec4(position, 1.0);
 }
 
 #stage fragment
 #version 460 core
 
-uniform bool u_isHair;
-
-out vec2 fragColor;
+out vec4 fragColor;
 
 void main() {
-
-    fragColor = u_isHair ? vec2(0.0,gl_FragCoord.z) : vec2(gl_FragCoord.z,0.0);
+    fragColor = vec4(0.0);
 }

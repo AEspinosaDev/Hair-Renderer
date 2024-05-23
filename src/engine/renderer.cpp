@@ -21,6 +21,7 @@ void Renderer::create_context()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, m_context.OpenGLMajor);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, m_context.OpenGLMinor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, m_context.OpenGLProfile);
+    
 
     m_window.ptr = glfwCreateWindow(m_window.extent.width, m_window.extent.height, m_window.title, NULL, NULL);
     if (!m_window.ptr)

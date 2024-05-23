@@ -3,6 +3,7 @@
 #define YUKSEL
 // #define FXAA
 #define GLINT_EXTENT 16
+#define DEPTH_PREPASS
 
 void HairRenderer::init()
 {
@@ -142,6 +143,52 @@ void HairRenderer::init()
     litPipeline.shader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
     litPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
     litPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
+#ifdef DEPTH_PREPASS
+    litPipeline.state.depthWrites = false;
+    litPipeline.state.depthFunction = DepthFuncType::LEQUAL;
+#endif
+    GraphicPipeline hairPipeline{};
+#ifdef MARSCHNER
+    hairPipeline.shader = new Shader("resources/shaders/strand-marschner.glsl", ShaderType::LIT);
+#else
+    hairPipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
+#endif
+    hairPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
+    hairPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
+#ifdef DEPTH_PREPASS
+    hairPipeline.state.depthWrites = false;
+    hairPipeline.state.depthFunction = DepthFuncType::LEQUAL;
+#endif
+
+    GraphicPipeline unlitPipeline{};
+    unlitPipeline.shader = new Shader("resources/shaders/unlit.glsl", ShaderType::UNLIT);
+    unlitPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
+    Material *lightMaterial = new Material(unlitPipeline);
+    m_light.dummy->set_material(lightMaterial);
+
+    m_shadowPipeline.shader = new Shader("resources/shaders/shadow.glsl", ShaderType::OTHER);
+
+    m_noisePipeline.shader = new Shader("resources/shaders/noise-gen.glsl", ShaderType::OTHER);
+
+#ifdef DEPTH_PREPASS
+    m_strandDepthPipeline.shader = new Shader("resources/shaders/strand-depth.glsl", ShaderType::OTHER);
+    m_depthPipeline.shader = new Shader("resources/shaders/depth.glsl", ShaderType::OTHER);
+#endif
+
+#ifdef FXAA
+    m_fxaaPipeline.shader = new Shader("resources/shaders/fxaa.glsl", ShaderType::OTHER);
+    m_fxaaPipeline.shader->bind();
+    m_fxaaPipeline.shader->set_int("u_frame", 0);
+    m_fxaaPipeline.shader->unbind();
+#endif
+
+    GraphicPipeline skyboxPipeline{};
+    skyboxPipeline.shader = new Shader("resources/shaders/skybox.glsl", ShaderType::OTHER);
+    skyboxPipeline.state.depthFunction = DepthFuncType::LEQUAL;
+
+#pragma endregion
+#pragma region MATERIALS
+
     Material *headMaterial = new Material(litPipeline);
     headMaterial->set_texture("u_shadowMap", m_shadowFBO->get_attachments().front().texture);
     Texture *skin = new Texture();
@@ -154,40 +201,10 @@ void HairRenderer::init()
     floorMaterial->set_texture("u_shadowMap", m_shadowFBO->get_attachments().front().texture);
     m_floor->set_material(floorMaterial);
 
-    GraphicPipeline hairPipeline{};
-#ifdef MARSCHNER
-    hairPipeline.shader = new Shader("resources/shaders/strand-marschner.glsl", ShaderType::LIT);
-#else
-    hairPipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
-#endif
-    hairPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
-    hairPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
     Material *hairMaterial = new Material(hairPipeline);
     hairMaterial->set_texture("u_shadowMap", m_shadowFBO->get_attachments().front().texture);
     hairMaterial->set_texture("u_noiseMap", m_noiseFBO->get_attachments().front().texture, 1);
     m_hair->set_material(hairMaterial);
-
-    GraphicPipeline unlitPipeline{};
-    unlitPipeline.shader = new Shader("resources/shaders/unlit.glsl", ShaderType::UNLIT);
-    unlitPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
-    Material *lightMaterial = new Material(unlitPipeline);
-    m_light.dummy->set_material(lightMaterial);
-
-    m_depthPipeline.shader = new Shader("resources/shaders/depth.glsl", ShaderType::OTHER);
-
-    m_noisePipeline.shader = new Shader("resources/shaders/noise-gen.glsl", ShaderType::OTHER);
-
-#ifdef FXAA
-    m_fxaaPipeline.shader = new Shader("resources/shaders/fxaa.glsl", ShaderType::OTHER);
-    m_fxaaPipeline.shader->bind();
-    m_fxaaPipeline.shader->set_int("u_frame", 0);
-    m_fxaaPipeline.shader->unbind();
-#endif
-
-
-    GraphicPipeline skyboxPipeline{};
-    skyboxPipeline.shader = new Shader("resources/shaders/skybox.glsl", ShaderType::OTHER);
-    skyboxPipeline.state.depthFunction = DepthFuncType::LEQUAL;
 
     Material *skyboxMaterial = new Material(skyboxPipeline);
 
@@ -292,6 +309,10 @@ void HairRenderer::draw()
     if (m_light.light->get_cast_shadows())
         shadow_pass();
 
+#ifdef DEPTH_PREPASS
+    depth_prepass();
+#endif
+
     forward_pass();
 
     postprocess_pass();
@@ -305,7 +326,12 @@ void HairRenderer::forward_pass()
     // glPopDebugGroupKHR();
 
     m_forwardFBO->bind();
+
+#ifndef DEPTH_PREPASS
     Framebuffer::clear_color_depth_bit();
+#else
+    Framebuffer::clear_color_bit();
+#endif
 
     resize_viewport(m_window.extent);
 
@@ -324,13 +350,15 @@ void HairRenderer::forward_pass()
     hairu.vec3Types["u_hair.baseColor"] = m_hairSettings.baseColor;
     hairu.floatTypes["u_hair.specular"] = m_hairSettings.specular;
     hairu.floatTypes["u_hair.roughness"] = m_hairSettings.roughness;
-    hairu.floatTypes["u_hair.scatter"] = m_hairSettings.scatter;
+    hairu.floatTypes["u_hair.scatter"] = m_hairSettings.scatterExp;
     hairu.floatTypes["u_hair.shift"] = m_hairSettings.shift;
     hairu.floatTypes["u_hair.ior"] = m_hairSettings.ior;
     hairu.boolTypes["u_hair.r"] = m_hairSettings.r;
     hairu.boolTypes["u_hair.tt"] = m_hairSettings.tt;
     hairu.boolTypes["u_hair.trt"] = m_hairSettings.trt;
     hairu.boolTypes["u_hair.glints"] = m_hairSettings.glints;
+    hairu.boolTypes["u_hair.useScatter"] = m_hairSettings.scatter;
+    hairu.boolTypes["u_hair.coloredScatter"] = m_hairSettings.colorScatter;
 #else
     hairu.vec3Types["u_albedo"] = m_hairSettings.color;
     hairu.vec3Types["u_spec1"] = m_hairSettings.specColor1;
@@ -358,7 +386,6 @@ void HairRenderer::forward_pass()
     // flooru.mat4Types["u_model"] = m_floor->get_model_matrix();
     // flooru.vec3Types["u_albedo"] = glm::vec3(1.0);
     // m_floor->get_material()->set_uniforms(flooru);
-
     // m_floor->draw();
 
     m_skybox->set_rotation({0.0, m_globalSettings.enviromentRotation, 0.0});
@@ -370,7 +397,29 @@ void HairRenderer::forward_pass()
     m_skybox->draw();
 }
 #pragma endregion
+#pragma region DEPTH PRE PASS
+void HairRenderer::depth_prepass()
+{
+    m_forwardFBO->bind();
+    Framebuffer::clear_color_depth_bit();
+    Framebuffer::enable_depth_writes(true);
+    Framebuffer::enable_depth_test(true);
 
+    resize_viewport(m_window.extent);
+
+    m_depthPipeline.shader->bind();
+    m_depthPipeline.shader->set_mat4("u_model", m_head->get_model_matrix());
+    m_head->draw(false);
+    m_depthPipeline.shader->unbind();
+
+    m_strandDepthPipeline.shader->bind();
+    m_strandDepthPipeline.shader->set_mat4("u_model", m_hair->get_model_matrix());
+    m_strandDepthPipeline.shader->set_float("u_thickness", m_hairSettings.thickness);
+    m_strandDepthPipeline.shader->set_vec3("u_camPos", m_camera->get_position());
+    m_hair->draw(false, GL_LINES);
+    m_strandDepthPipeline.shader->unbind();
+}
+#pragma endregion
 #pragma region SHADOW PASS
 void HairRenderer::shadow_pass()
 {
@@ -382,21 +431,21 @@ void HairRenderer::shadow_pass()
 
     resize_viewport(m_globalSettings.shadowExtent);
 
-    m_depthPipeline.shader->bind();
+    m_shadowPipeline.shader->bind();
 
-    m_depthPipeline.shader->set_mat4("u_model", m_head->get_model_matrix());
-    m_depthPipeline.shader->set_bool("u_isHair", false);
+    m_shadowPipeline.shader->set_mat4("u_model", m_head->get_model_matrix());
+    m_shadowPipeline.shader->set_bool("u_isHair", false);
     m_head->draw(false);
 
     // m_depthPipeline.shader->set_mat4("u_model", m_floor->get_model_matrix());
     // m_floor->draw(false);
 
-    m_depthPipeline.shader->set_mat4("u_model", m_hair->get_model_matrix());
-    m_depthPipeline.shader->set_bool("u_isHair", true);
+    m_shadowPipeline.shader->set_mat4("u_model", m_hair->get_model_matrix());
+    m_shadowPipeline.shader->set_bool("u_isHair", true);
 
     m_hair->draw(false, GL_LINES);
 
-    m_depthPipeline.shader->unbind();
+    m_shadowPipeline.shader->unbind();
 }
 #pragma endregion
 #pragma region NOISE PASS
@@ -424,7 +473,7 @@ void HairRenderer::postprocess_pass()
 
     m_fxaaPipeline.shader->bind();
 
-    m_forwardFBO->get_attachments().front().texture->bind(); 
+    m_forwardFBO->get_attachments().front().texture->bind();
 
     m_vignette->draw(false);
 
@@ -460,11 +509,14 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::ColorEdit3("Base color", (float *)&m_hairSettings.baseColor);
     ImGui::DragFloat("Specular", &m_hairSettings.specular, .05f, 0.0f, 30.0f);
     ImGui::DragFloat("Roughness", &m_hairSettings.roughness, .05f, 0.0f, 1.0f);
-    ImGui::DragFloat("Scatter", &m_hairSettings.scatter, 1.f, 0.0f, 1000.0f);
     ImGui::DragFloat("Shift", &m_hairSettings.shift, -0.05f, 2 * M_PI, M_PI_2);
     ImGui::DragFloat("IOR", &m_hairSettings.ior, 0.01f, 0.0f, 10.0f);
     ImGui::Checkbox("Glints", &m_hairSettings.glints);
-    ImGui::Spacing();
+    ImGui::Separator();
+    ImGui::Checkbox("Scattering", &m_hairSettings.scatter);
+    ImGui::Checkbox("Color absortion", &m_hairSettings.colorScatter);
+    ImGui::DragFloat("Scatter Sigma", &m_hairSettings.scatterExp, 1.f, 0.0f, 1000.0f);
+    ImGui::Separator();
     ImGui::Checkbox("R Lobe", &m_hairSettings.r);
     ImGui::Checkbox("TT Lobe", &m_hairSettings.tt);
     ImGui::Checkbox("TRT Lobe", &m_hairSettings.trt);

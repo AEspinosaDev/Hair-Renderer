@@ -22,13 +22,16 @@ struct HairSettings
         10.0f / 255.0f);
     float specular = 5.0f;
     float roughness = 0.4f;
-    float scatter = 9.5f;
     float shift = 0.12f; // In radians (-5º to -10º) => 0.088 to 0.17 //Not with epic 0.02 does fine
     float ior = 1.55f;
 
     bool r = true;
     bool tt = true;
     bool trt = true;
+
+    bool scatter = true;
+    bool colorScatter = true;
+    float scatterExp = 250.0f;
 
     bool glints = true;
 #else
@@ -55,7 +58,7 @@ struct GlobalSettings
     float ambientStrength = 0.3f;
     float enviromentRotation = 0.0f;
     Extent2D shadowExtent = {2048, 2048};
-    unsigned int samples = 16;
+    unsigned int samples = 8;
 };
 
 #endif

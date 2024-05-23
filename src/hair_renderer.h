@@ -79,9 +79,11 @@ private:
 
     //--- Framebuffer and shading data ---
 
-    GraphicPipeline m_depthPipeline{};
+    GraphicPipeline m_shadowPipeline{};
     GraphicPipeline m_noisePipeline{};
     GraphicPipeline m_fxaaPipeline{};
+    GraphicPipeline m_depthPipeline{};
+    GraphicPipeline m_strandDepthPipeline{};
 
     Framebuffer* m_noiseFBO;
     Framebuffer* m_forwardFBO;
@@ -107,6 +109,8 @@ private:
 
 
     void forward_pass();
+
+    void depth_prepass();
 
     void shadow_pass();
 
