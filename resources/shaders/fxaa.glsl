@@ -24,18 +24,18 @@ out vec4 aaOutput;
 const float EDGE_THRESHOLD_MIN = 0.05;
 const float EDGE_THRESHOLD_MAX = 0.2;
 const int ITERATIONS = 128;
-const float SUBPIXEL_QUALITY = 0.15; 
+const float SUBPIXEL_QUALITY = 0.05; 
 
 float luma(vec3 rgb){
     return sqrt(dot(rgb, vec3(0.299, 0.587, 0.114)));
 }
 
 float QUALITY(int i){
-    if(i<5) return 1.0;
-    if(i<10) return 2.0;
-    if(i==10) return 4.0;
-    if(i==11) return 8.0;
-    return 8.0;
+    // if(i<5) return 1.0;
+    // if(i<10) return 2.0;
+    // if(i==10) return 4.0;
+    // if(i==11) return 8.0;
+    return 1.0;
 }
 
 void main()

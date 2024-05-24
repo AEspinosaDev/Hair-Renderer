@@ -43,36 +43,18 @@ layout (binding = 0) uniform Camera
 
 }u_camera;
 
-out vec3 g_pos;
-out vec3 g_modelPos;
-out vec3 g_normal;
-out vec2 g_uv;
-out vec3 g_dir;
-out vec3 g_color;
-out vec3 g_origin;
-out int g_id;
+
 
 uniform float u_thickness;
 uniform vec3 u_camPos;
 
 void emitQuadPoint(vec4 origin, 
                   vec4 right,
-                  float offset,
-                  vec3 forward, 
-                  vec3 normal, 
-                  vec2 uv,
-                  int id){
+                  float offset){
   
         vec4 newPos = origin + right * offset; //Model space
         gl_Position =  u_camera.viewProj * newPos;
-        g_dir = normalize(mat3(transpose(inverse(u_camera.view))) * v_tangent[id]);
-        g_color = v_color[id];
-        g_pos = (u_camera.view *  newPos).xyz;
-        g_modelPos = newPos.xyz;
-        g_uv = uv;
-        g_normal =  normalize(mat3(transpose(inverse(u_camera.view))) * normal);
-        g_origin = (u_camera.view * origin).xyz; 
-        g_id = v_id[0];
+       
 
         EmitVertex();
 }
@@ -100,54 +82,16 @@ void main() {
 
         float halfLength = u_thickness*0.5;
 
-        emitQuadPoint(startPoint,right0,halfLength,dir0,normal0,vec2(1.0,0.0),0);
-        emitQuadPoint(endPoint,right1,halfLength,dir1,normal1,vec2(1.0,1.0),1);
-        emitQuadPoint(startPoint,-right0,halfLength,dir0,normal0,vec2(0.0,0.0),0);
-        emitQuadPoint(endPoint,-right1,halfLength,dir1,normal1,vec2(0.0,1.0),1);
+        emitQuadPoint(startPoint,right0,halfLength);
+        emitQuadPoint(endPoint,right1,halfLength);
+        emitQuadPoint(startPoint,-right0,halfLength);
+        emitQuadPoint(endPoint,-right1,halfLength);
 
 }
 
 #stage fragment
 #version 460 core
 
-
-in vec3 g_color;
-
-in vec3 g_pos;
-in vec3 g_modelPos;
-in vec3 g_normal;
-in vec2 g_uv;
-in vec3 g_dir;
-in vec3 g_origin;
-in flat int g_id;
-
-
-
-
-layout (binding = 0) uniform Camera
-{
-    mat4 viewProj;
-    mat4 modelView;
-    mat4 view;
-
-}u_camera;
-
-layout (binding = 1) uniform Scene
-{
-    vec3 ambientColor;
-    float ambientIntensity;
-    vec4 lightPos;
-    vec3 lightColor;
-    float lightIntensity;
-
-    float shadowBias;
-    float pcfKernelSize;
-    float castShadow;
-
-    float kernelRadius;
-
-    mat4 lightViewProj;
-}u_scene;
 
 out vec4 fragColor;
 

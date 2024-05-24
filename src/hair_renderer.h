@@ -71,6 +71,7 @@ private:
         glm::vec4 lightColor;
         glm::vec4 shadowConfig;
         glm::mat4 lightViewProj; 
+        glm::vec4 frustrumData;
     };
 
     UniformBuffer *m_cameraUBO;
@@ -89,6 +90,7 @@ private:
     Framebuffer* m_forwardFBO;
     Framebuffer *m_shadowFBO;
     Framebuffer *m_fxaaFBO;
+    Framebuffer *m_depthFBO;
 
     //--- Settings ---
 
@@ -150,6 +152,7 @@ private:
         m_camera->set_projection(width, height);
         resize({width, height});
         m_forwardFBO->resize({width, height});
+        m_depthFBO->resize({width,height});
     }
 
 #pragma endregion

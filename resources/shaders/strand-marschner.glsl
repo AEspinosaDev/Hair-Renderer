@@ -147,7 +147,10 @@ layout (binding = 1) uniform Scene
 
     float kernelRadius;
 
+
     mat4 lightViewProj;
+
+    vec4 frustrumData;
 }u_scene;
 
 // ---Hair--
@@ -166,12 +169,15 @@ struct HairMaterial{
     bool r;
     bool tt;
     bool trt;
+
+    bool occlusion;
 };
 
 uniform float u_thickness;
 uniform HairMaterial u_hair;
 uniform sampler2D u_shadowMap;
 uniform sampler2D u_noiseMap;
+uniform sampler2D u_depthMap;
 
 float scatterWeight = 0.0;
 
@@ -313,8 +319,8 @@ float filterPCF(int kernelSize, vec3 coords, float bias) {
             float pcfDepth = texture(u_shadowMap, vec2(coords.xy + vec2(x, y) * texelSize* u_scene.kernelRadius)).r;
 
             //Scatter weight
-            float currentZ = linearizeDepth(currentDepth,0.5,100.0);
-            float shadowZ = linearizeDepth(pcfDepth,0.5,100.0);
+            float currentZ = linearizeDepth(currentDepth,u_scene.frustrumData.z,u_scene.frustrumData.w);
+            float shadowZ = linearizeDepth(pcfDepth,u_scene.frustrumData.z,u_scene.frustrumData.w);
             float weight = 1.0-clamp(exp(-u_hair.scatter*abs(currentZ-shadowZ)),0.0,1.0);
             scatterWeight += weight;
 
@@ -359,9 +365,50 @@ vec3 multipleScattering(){
   vec3 scattering = pow(u_hair.baseColor/getLuminance(u_scene.lightColor),vec3(scatterWeight));
   return scattering;
 
+}
 
 
+float unsharpSSAO(){ //Very simple SSAO with UNSHARP MASKING only using D BUFFER
 
+    const float kernelDimension = 15.0;
+    const ivec2 screenSize = textureSize(u_depthMap,0);
+
+    float occlusion = 0.0;
+
+    int i = int(gl_FragCoord.x);
+    int j = int(gl_FragCoord.y);
+
+    int maxX = i + int(floor(kernelDimension*0.5));
+    int maxY = j + int(floor(kernelDimension*0.5));
+
+    float sampX;
+    float sampY;
+
+    float neighborCount = 0;
+
+    for (int x = i - int(floor(kernelDimension*0.5)); x < maxX; x++) {
+    for (int y = j - int(floor(kernelDimension*0.5)); y < maxY; y++) {
+    
+    sampX = float(x) / screenSize.x;
+    sampY = float(y) / screenSize.y;
+
+    if (sampX >= 0.0 && sampX <= 1.0 && sampY >= 0.0 && sampY <= 1.0 &&
+    
+    abs( linearizeDepth(texture(u_depthMap,gl_FragCoord.xy / screenSize.xy).x, u_scene.frustrumData.x, u_scene.frustrumData.y) -
+     linearizeDepth(texture(u_depthMap,vec2(sampX,sampY)).x, u_scene.frustrumData.x, u_scene.frustrumData.y)) < 0.02) {
+    occlusion +=   linearizeDepth(texture(u_depthMap,vec2(sampX,sampY)).x, u_scene.frustrumData.x, u_scene.frustrumData.y);
+    neighborCount++;
+    }
+    }
+    }
+
+    occlusion = occlusion / neighborCount;
+     
+     
+    occlusion = 20 * ( linearizeDepth(texture(u_depthMap,gl_FragCoord.xy / screenSize.xy).x, u_scene.frustrumData.x, u_scene.frustrumData.y) - max(0.0, occlusion));
+
+
+  return abs(occlusion);
 }
 
 
@@ -376,6 +423,11 @@ void main() {
 
     vec3 ambient = (u_scene.ambientIntensity * u_scene.ambientColor) * u_hair.baseColor ;
     color+=ambient;
+
+  if(u_hair.occlusion){
+    float occ = unsharpSSAO();
+    color-=vec3(occ);
+  }
 
 
     fragColor = vec4(color,1.0f);

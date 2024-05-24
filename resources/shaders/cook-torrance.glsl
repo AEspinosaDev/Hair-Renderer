@@ -31,7 +31,7 @@ void main() {
 
     _modelPos = (u_model * vec4(position, 1.0)).xyz;
 
-    _normal = normalize(mat3(transpose(inverse(modelView))) * normal);
+    _normal = normalize(mat3(transpose(inverse(modelView))) * -normal);
 
     _color = color;
 
@@ -64,7 +64,10 @@ layout (binding = 1) uniform Scene
 
     float filterRadius;
 
+
     mat4 lightViewProj;
+    
+    vec4 frustrumData;
 }u_scene;
 
 uniform vec3 u_albedo;
@@ -201,7 +204,7 @@ float computeShadow(bool isHair){
         return 0.0;
 
     vec3 lightDir = normalize(u_scene.lightPos.xyz - _pos);
-    float bias = max(u_scene.shadowBias *  5.0 * (1.0 - dot(s.normal, lightDir)),u_scene.shadowBias);  //Modulate by angle of incidence
+    float bias = max(0.00025 *  5.0 * (1.0 - dot(s.normal, lightDir)),0.00025);  //Modulate by angle of incidence
    
     return filterPCF(int(u_scene.pcfKernelSize), projCoords,bias, isHair);
 

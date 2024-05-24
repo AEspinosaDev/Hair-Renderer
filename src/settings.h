@@ -30,10 +30,12 @@ struct HairSettings
     bool trt = true;
 
     bool scatter = true;
-    bool colorScatter = true;
-    float scatterExp = 250.0f;
+    bool colorScatter = false;
+    float scatterExp = 500.0f;
 
     bool glints = true;
+
+    bool occlusion = true;
 #else
     // glm::vec3 color = glm::vec3(0.95f, 0.65f, 0.16f);
     glm::vec3 color = glm::vec3(0.6f, 0.078f, 0.078f);

@@ -1,6 +1,6 @@
 #include "hair_renderer.h"
 
-#define YUKSEL
+// #define YUKSEL
 // #define FXAA
 #define GLINT_EXTENT 16
 #define DEPTH_PREPASS
@@ -92,42 +92,31 @@ void HairRenderer::init()
     m_forwardFBO->generate();
 #endif
 
-    // Creating the shadow pass buffer
-
-    // TextureConfig colorDepthConfig{};
-    // colorDepthConfig.format = GL_RG;
-    // colorDepthConfig.internalFormat = GL_RG32F;
-    // colorDepthConfig.dataType = GL_FLOAT;
-    // colorDepthConfig.anisotropicFilter = false;
-    // colorDepthConfig.magFilter = GL_NEAREST;
-    // colorDepthConfig.minFilter = GL_NEAREST;
-    // colorDepthConfig.wrapS = GL_CLAMP_TO_BORDER;
-    // colorDepthConfig.wrapT = GL_CLAMP_TO_BORDER;
-    // colorDepthConfig.useMipmaps = false;
-    // colorDepthConfig.borderColor = glm::vec4(1.0f);
-
-    // Attachment colorDepthAttachment{};
-    // colorDepthAttachment.texture = new Texture(m_globalSettings.shadowExtent, colorDepthConfig);
-    // colorDepthAttachment.attachmentType = GL_COLOR_ATTACHMENT0;
-
-    TextureConfig shadowDepthConfig{};
-    shadowDepthConfig.format = GL_DEPTH_COMPONENT;
-    shadowDepthConfig.internalFormat = GL_DEPTH_COMPONENT32;
-    shadowDepthConfig.dataType = GL_FLOAT;
-    shadowDepthConfig.anisotropicFilter = false;
-    shadowDepthConfig.magFilter = GL_NEAREST;
-    shadowDepthConfig.minFilter = GL_NEAREST;
-    shadowDepthConfig.wrapS = GL_CLAMP_TO_BORDER;
-    shadowDepthConfig.wrapT = GL_CLAMP_TO_BORDER;
-    shadowDepthConfig.useMipmaps = false;
-    shadowDepthConfig.borderColor = glm::vec4(1.0f);
+    TextureConfig depthConfig{};
+    depthConfig.format = GL_DEPTH_COMPONENT;
+    depthConfig.internalFormat = GL_DEPTH_COMPONENT32;
+    depthConfig.dataType = GL_FLOAT;
+    depthConfig.anisotropicFilter = false;
+    depthConfig.magFilter = GL_NEAREST;
+    depthConfig.minFilter = GL_NEAREST;
+    depthConfig.wrapS = GL_CLAMP_TO_BORDER;
+    depthConfig.wrapT = GL_CLAMP_TO_BORDER;
+    depthConfig.useMipmaps = false;
+    depthConfig.borderColor = glm::vec4(1.0f);
 
     Attachment shadowDepthAttachment{};
-    shadowDepthAttachment.texture = new Texture(m_globalSettings.shadowExtent, shadowDepthConfig);
+    shadowDepthAttachment.texture = new Texture(m_globalSettings.shadowExtent, depthConfig);
     shadowDepthAttachment.attachmentType = GL_DEPTH_ATTACHMENT;
 
     m_shadowFBO = new Framebuffer(m_globalSettings.shadowExtent, {shadowDepthAttachment});
     m_shadowFBO->generate();
+
+    Attachment predepthAttachment{};
+    predepthAttachment.texture = new Texture(m_window.extent, depthConfig);
+    predepthAttachment.attachmentType = GL_DEPTH_ATTACHMENT;
+
+    m_depthFBO = new Framebuffer(m_window.extent, {predepthAttachment});
+    m_depthFBO->generate();
 
 #pragma endregion
 #pragma region SHADER PIPELINES
@@ -143,10 +132,7 @@ void HairRenderer::init()
     litPipeline.shader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
     litPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
     litPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
-#ifdef DEPTH_PREPASS
-    litPipeline.state.depthWrites = false;
-    litPipeline.state.depthFunction = DepthFuncType::LEQUAL;
-#endif
+
     GraphicPipeline hairPipeline{};
 #ifdef MARSCHNER
     hairPipeline.shader = new Shader("resources/shaders/strand-marschner.glsl", ShaderType::LIT);
@@ -155,10 +141,7 @@ void HairRenderer::init()
 #endif
     hairPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
     hairPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
-#ifdef DEPTH_PREPASS
-    hairPipeline.state.depthWrites = false;
-    hairPipeline.state.depthFunction = DepthFuncType::LEQUAL;
-#endif
+
 
     GraphicPipeline unlitPipeline{};
     unlitPipeline.shader = new Shader("resources/shaders/unlit.glsl", ShaderType::UNLIT);
@@ -195,6 +178,7 @@ void HairRenderer::init()
     loaders::load_image(skin, "resources/images/head.png");
     skin->generate();
     headMaterial->set_texture("u_albedoMap", skin, 1);
+    headMaterial->set_texture("u_depthMap", m_depthFBO->get_attachments().front().texture, 2);
     m_head->set_material(headMaterial);
 
     Material *floorMaterial = new Material(litPipeline);
@@ -204,6 +188,7 @@ void HairRenderer::init()
     Material *hairMaterial = new Material(hairPipeline);
     hairMaterial->set_texture("u_shadowMap", m_shadowFBO->get_attachments().front().texture);
     hairMaterial->set_texture("u_noiseMap", m_noiseFBO->get_attachments().front().texture, 1);
+    hairMaterial->set_texture("u_depthMap", m_depthFBO->get_attachments().front().texture, 2);
     m_hair->set_material(hairMaterial);
 
     Material *skyboxMaterial = new Material(skyboxPipeline);
@@ -236,7 +221,7 @@ void HairRenderer::init()
         loadThread1.detach();
         m_head->set_rotation({180.0f, -90.0f, 0.0f});
         m_head->set_scale(0.98f);
-        std::thread loadThread2(hair_loaders::load_cy_hair, m_hair, "resources/models/curly.hair");
+        std::thread loadThread2(hair_loaders::load_cy_hair, m_hair, "resources/models/straight.hair");
         loadThread2.detach();
 
         // Low poly
@@ -254,6 +239,8 @@ void HairRenderer::init()
         loaders::load_PLY(m_head, "resources/models/head_blender.ply", true, true, false);
         std::thread loadThread1(hair_loaders::load_neural_hair, m_hair, "resources/models/2000000.ply", m_head, true, true, false);
         loadThread1.detach();
+        m_head->set_scale(3.0);
+        m_hair->set_scale(3.0);
     }
 #endif
 
@@ -304,6 +291,8 @@ void HairRenderer::draw()
     glm::mat4 lv = glm::lookAt(m_light.light->get_position(), shadow.target, glm::vec3(0, 1, 0));
     globu.shadowConfig = {shadow.bias, shadow.pcfKernel, shadow.cast, shadow.kernelRadius};
     globu.lightViewProj = lp * lv;
+    globu.frustrumData = {m_camera->get_near(), m_camera->get_far(),
+                          shadow.nearPlane, shadow.farPlane};
     m_globalUBO->cache_data(sizeof(GlobalUniforms), &globu);
 
     if (m_light.light->get_cast_shadows())
@@ -327,11 +316,7 @@ void HairRenderer::forward_pass()
 
     m_forwardFBO->bind();
 
-#ifndef DEPTH_PREPASS
     Framebuffer::clear_color_depth_bit();
-#else
-    Framebuffer::clear_color_bit();
-#endif
 
     resize_viewport(m_window.extent);
 
@@ -359,6 +344,7 @@ void HairRenderer::forward_pass()
     hairu.boolTypes["u_hair.glints"] = m_hairSettings.glints;
     hairu.boolTypes["u_hair.useScatter"] = m_hairSettings.scatter;
     hairu.boolTypes["u_hair.coloredScatter"] = m_hairSettings.colorScatter;
+    hairu.boolTypes["u_hair.occlusion"] = m_hairSettings.occlusion;
 #else
     hairu.vec3Types["u_albedo"] = m_hairSettings.color;
     hairu.vec3Types["u_spec1"] = m_hairSettings.specColor1;
@@ -400,7 +386,7 @@ void HairRenderer::forward_pass()
 #pragma region DEPTH PRE PASS
 void HairRenderer::depth_prepass()
 {
-    m_forwardFBO->bind();
+    m_depthFBO->bind();
     Framebuffer::clear_color_depth_bit();
     Framebuffer::enable_depth_writes(true);
     Framebuffer::enable_depth_test(true);
@@ -520,6 +506,8 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::Checkbox("R Lobe", &m_hairSettings.r);
     ImGui::Checkbox("TT Lobe", &m_hairSettings.tt);
     ImGui::Checkbox("TRT Lobe", &m_hairSettings.trt);
+    ImGui::Separator();
+    ImGui::Checkbox("Occlusion", &m_hairSettings.occlusion);
 #else
     ImGui::ColorEdit3("Base color", (float *)&m_hairSettings.color);
     ImGui::DragFloat("Specular 1 power", &m_hairSettings.specPower1, 1.0f, 0.0f, 240.0f);
