@@ -48,20 +48,21 @@ struct HairSettings
 struct HeadSettings
 {
     glm::vec3 skinColor = glm::vec3(
-        225.0f / 255.0f,
-        94.0f / 255.0f,
-        66.0f / 255.0f);
+        240.0f / 255.0f,
+        184.0f / 255.0f,
+        160.0f / 255.0f);
     bool useAlbedoTexture = false;
 };
 struct GlobalSettings
 {
     bool showUI{true};
     glm::vec3 ambientColor = glm::vec3(1.0f);
-    float ambientStrength = 0.5f;
+    float ambientStrength = 0.25f;
     float enviromentRotation = 0.0f;
     bool useSkyboxIrradiance = false;
     Extent2D shadowExtent = {2048, 2048};
     unsigned int samples = 8;
+    float exposure = 1.0;
     
 };
 

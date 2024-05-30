@@ -279,6 +279,7 @@ void HairRenderer::draw()
     camu.mv = m_camera->get_view() * m_head->get_model_matrix();
     camu.v = m_camera->get_view();
     camu.position = m_camera->get_position();
+    camu.exposure = m_globalSettings.exposure;
     m_cameraUBO->cache_data(sizeof(CameraUniforms), &camu);
 
     GlobalUniforms globu;
@@ -499,6 +500,7 @@ void HairRenderer::setup_user_interface_frame()
     {
         set_v_sync(m_settings.vSync);
     }
+    ImGui::DragFloat("Camera Exposure",&m_globalSettings.exposure);
     ImGui::Separator();
     ImGui::SeparatorText("Hair Settings");
     gui::draw_transform_widget(m_hair);

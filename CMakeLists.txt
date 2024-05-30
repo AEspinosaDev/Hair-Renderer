@@ -7,21 +7,41 @@ find_package(glfw3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glm REQUIRED)
 
-file(GLOB SOURCES
-"src/*.cpp"
-"src/*.h"
+file(GLOB ENGINE_SOURCES
 "src/engine/*.cpp"
 "src/engine/*.h"
 "deps/imgui/*.cpp"
 "deps/imgui/*.h"
 )
 
-add_executable(HairViewer ${SOURCES})
+add_library(Engine ${ENGINE_SOURCES})
+target_link_libraries(Engine libglfw3.a GLEW::GLEW ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} -lGL )
+target_include_directories(Engine PUBLIC ${CMAKE_SOURCE_DIR}/deps ${CMAKE_SOURCE_DIR}/deps/imgui)
 
-target_link_libraries(HairViewer libglfw3.a GLEW::GLEW ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} -lGL)
-target_include_directories(HairViewer PUBLIC ${CMAKE_SOURCE_DIR}/deps ${CMAKE_SOURCE_DIR}/deps/imgui)
+file(GLOB APP_SOURCES
+"src/*.cpp"
+"src/*.h"
+)
+
+add_executable(HairViewer ${APP_SOURCES})
+target_link_libraries(HairViewer PRIVATE Engine)
+
+
+add_executable(LUTGenerator 
+"src/marschner/main.cpp" 
+"src/marschner/generator.hpp")
+target_link_libraries(LUTGenerator PRIVATE Engine)
+
 
 set_target_properties(HairViewer PROPERTIES
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin/debug
+RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin/debug
 )
+set_target_properties(LUTGenerator PROPERTIES
+RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin/debug
+)
+
+target_compile_definitions(LUTGenerator PUBLIC SHADERS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/")
+
+

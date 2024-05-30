@@ -13,6 +13,7 @@ layout (binding = 0) uniform Camera
     mat4 modelView;
     mat4 view;
     vec3 position;
+    float exposure;
 }u_camera;
 
 uniform mat4 u_model;
@@ -62,6 +63,7 @@ layout (binding = 0) uniform Camera
     mat4 modelView;
     mat4 view;
     vec3 position;
+    float exposure;
 }u_camera;
 
 layout (binding = 1) uniform Scene
@@ -184,7 +186,7 @@ vec3 computeLighting() {
 
 	// Add to outgoing radiance result
     float lambertian = max(dot(s.normal, lightDir), 0.0);
-    return (kD * s.albedo  + specular) * radiance * lambertian;
+    return (kD * s.albedo+ specular) * radiance * lambertian;
 
 }
 bool isHairShadow(vec2 depthValue){
@@ -234,6 +236,11 @@ float computeShadow(bool isHair){
 
 }
 
+vec3 toneMapReinhard(vec3 color, float exposure) {
+    vec3 mapped = exposure * color;
+    return mapped / (1.0 + mapped);
+}
+
 
 void main() {
 
@@ -256,23 +263,20 @@ void main() {
         vec3 aDiffuse = vec3(1.0)  - specularity;
         aDiffuse *= 1.0 - s.metalness;	
         vec3 irradiance = texture(u_irradianceMap, _wNormal).rgb*u_scene.ambientIntensity;
-    //     irradiance = irradiance / (irradiance + vec3(1.0));
-
-    // //Gamma Correction
-    // const float GAMMA = 2.2;
-    // irradiance = pow(irradiance, vec3(1.0 / GAMMA));
+        // irradiance = toneMapReinhard(irradiance,u_camera.exposure);
+   
         vec3 diffuse      = irradiance * s.albedo;
          ambient = (aDiffuse * diffuse) * s.ao;
     }else{
-         ambient = (u_scene.ambientIntensity * 0.1 * u_scene.ambientColor) * s.albedo * s.ao;
+         ambient = (u_scene.ambientIntensity  * u_scene.ambientColor) * s.albedo * s.ao;
     }
     color += ambient;
     
 
-	//Tone Up
-    // color = color / (color + vec3(1.0));
+	// color = toneMapReinhard(color,u_camera.exposure);
 
-    // //Gamma Correction
+
+    // // //Gamma Correction
     // const float GAMMA = 2.2;
     // color = pow(color, vec3(1.0 / GAMMA));
 

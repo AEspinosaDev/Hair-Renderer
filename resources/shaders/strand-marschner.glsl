@@ -41,6 +41,7 @@ layout (binding = 0) uniform Camera
     mat4 modelView;
     mat4 view;
     vec3 position;
+    float exposure;
 
 }u_camera;
 
@@ -138,6 +139,7 @@ layout (binding = 0) uniform Camera
     mat4 modelView;
     mat4 view;
     vec3 position;
+    float exposure;
 
 }u_camera;
 
@@ -417,7 +419,7 @@ float unsharpSSAO(){ //Very simple SSAO with UNSHARP MASKING only using D BUFFER
     occlusion = 20 * ( linearizeDepth(texture(u_depthMap,gl_FragCoord.xy / screenSize.xy).x, u_scene.frustrumData.x, u_scene.frustrumData.y) - max(0.0, occlusion));
 
 
-  return occlusion;
+  return clamp(occlusion,0.0,1.0);
 }
 
 vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
@@ -450,11 +452,17 @@ vec3 computeAmbient(){
       false,
       u_hair.trt);
     }else{
-        vec3 ambient = (u_scene.ambientIntensity  * u_scene.ambientColor) *  u_hair.baseColor ;
+       ambient = (u_scene.ambientIntensity  * u_scene.ambientColor) *  u_hair.baseColor ;
     }
   // ambient = fn;
   return ambient;
 }
+
+vec3 toneMapReinhard(vec3 color, float exposure) {
+    vec3 mapped = exposure * color;
+    return mapped / (1.0 + mapped);
+}
+
 
 void main() {
 
@@ -481,12 +489,9 @@ void main() {
       float occ = unsharpSSAO();
       color-=vec3(occ);
     }
-
-  //  color = color / (color + vec3(1.0));
-
-    //Gamma Correction
-    // const float GAMMA = 2.2;
-    // color = pow(color, vec3(1.0 / GAMMA));
+  // color = color / (color + vec3(1.0));
+  //   const float GAMMA = 2.2;
+  //   color = pow(color, vec3(1.0 / GAMMA));
 
     fragColor = vec4(color,1.0f);
 
