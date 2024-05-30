@@ -40,20 +40,23 @@ layout (binding = 0) uniform Camera
     mat4 viewProj;
     mat4 modelView;
     mat4 view;
+    vec3 position;
 
 }u_camera;
 
 out vec3 g_pos;
 out vec3 g_modelPos;
 out vec3 g_normal;
+out vec3 g_modelNormal;
 out vec2 g_uv;
 out vec3 g_dir;
+out vec3 g_modelDir;
 out vec3 g_color;
 out vec3 g_origin;
 out int g_id;
 
 uniform float u_thickness;
-uniform vec3 u_camPos;
+// uniform vec3 u_camPos;
 uniform mat4 u_model;
 
 void emitQuadPoint(vec4 origin, 
@@ -67,11 +70,13 @@ void emitQuadPoint(vec4 origin,
         vec4 newPos = origin + right * offset; //Model space
         gl_Position =  u_camera.viewProj * newPos;
         g_dir = normalize(mat3(transpose(inverse(u_camera.view))) * v_tangent[id]);
+        g_modelDir = v_tangent[id];
         g_color = v_color[id];
         g_pos = (u_camera.view *  newPos).xyz;
         g_modelPos = newPos.xyz;
         g_uv = uv;
         g_normal =  normalize(mat3(transpose(inverse(u_camera.view))) * normal);
+        g_modelNormal = normal;
         g_origin = (u_camera.view * origin).xyz; 
         g_id = v_id[0];
 
@@ -85,8 +90,8 @@ void main() {
         vec4 startPoint = gl_in[0].gl_Position;
         vec4 endPoint = gl_in[1].gl_Position;
 
-        vec4 view0 = vec4(u_camPos,1.0)-startPoint;
-        vec4 view1 = vec4(u_camPos,1.0)-endPoint;
+        vec4 view0 = vec4(u_camera.position,1.0)-startPoint;
+        vec4 view1 = vec4(u_camera.position,1.0)-endPoint;
 
         vec3 dir0 = v_tangent[0];
         vec3 dir1 = v_tangent[1];
@@ -117,8 +122,10 @@ in vec3 g_color;
 in vec3 g_pos;
 in vec3 g_modelPos;
 in vec3 g_normal;
+in vec3 g_modelNormal;
 in vec2 g_uv;
 in vec3 g_dir;
+in vec3 g_modelDir;
 in vec3 g_origin;
 in flat int g_id;
 
@@ -130,6 +137,7 @@ layout (binding = 0) uniform Camera
     mat4 viewProj;
     mat4 modelView;
     mat4 view;
+    vec3 position;
 
 }u_camera;
 
@@ -178,6 +186,9 @@ uniform HairMaterial u_hair;
 uniform sampler2D u_shadowMap;
 uniform sampler2D u_noiseMap;
 uniform sampler2D u_depthMap;
+uniform samplerCube u_irradianceMap;
+uniform bool u_useSkybox;
+uniform vec3 u_BVCenter;
 
 float scatterWeight = 0.0;
 
@@ -258,18 +269,16 @@ vec3 NTRT(float sinThetaD, float cosThetaD, float cosPhi){
 }
 
 //Real-time Marschnerr
-vec3 computeLighting(){
+vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bool trt){
 
   //--->>>View space
   vec3 wi = normalize(u_scene.lightPos.xyz- g_pos);   //Light vector
   vec3 n = g_normal;                                 //Strand shading normal
   vec3 v = normalize(-g_pos);                         //Camera vector
   vec3 u = normalize(g_dir);                          //Strand tangent/direction
-
-  vec3 radiance = u_scene.lightColor*u_scene.lightIntensity;
   
   //Betas
-  float betaR = u_hair.roughness*u_hair.roughness;
+  float betaR = beta*beta;
   float betaTT = 0.5*betaR;
   float betaTRT = 2.0*betaR;
 
@@ -290,9 +299,9 @@ vec3 computeLighting(){
   float cosThetaD = cos(thetaD);
   float sinThetaD = sin(thetaD);
 
-  float R = u_hair.r ? M(sinThetaWi+sinThetaV-u_hair.shift*2.0, betaR )*NR(wi,v,cosPhiD): 0.0; 
-  vec3 TT = u_hair.tt ? M(sinThetaWi+sinThetaV+u_hair.shift,betaTT)*NTT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
-  vec3 TRT = u_hair.trt ? M(sinThetaWi+sinThetaV+u_hair.shift*4.0,betaTRT)*NTRT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
+  float R = r ? M(sinThetaWi+sinThetaV-shift*2.0, betaR )*NR(wi,v,cosPhiD): 0.0; 
+  vec3 TT = tt ? M(sinThetaWi+sinThetaV+shift,betaTT)*NTT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
+  vec3 TRT = trt ? M(sinThetaWi+sinThetaV+shift*4.0,betaTRT)*NTRT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
 
 
   vec3 albedo = u_hair.baseColor;
@@ -408,27 +417,76 @@ float unsharpSSAO(){ //Very simple SSAO with UNSHARP MASKING only using D BUFFER
     occlusion = 20 * ( linearizeDepth(texture(u_depthMap,gl_FragCoord.xy / screenSize.xy).x, u_scene.frustrumData.x, u_scene.frustrumData.y) - max(0.0, occlusion));
 
 
-  return abs(occlusion);
+  return occlusion;
 }
 
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}  
+
+vec3 computeAmbient(){
+    //Square Enix Method
+
+    //Should be world space. 2 fake normals
+    vec3 n1 = cross(g_modelDir, cross(u_camera.position, g_modelDir));
+    vec3 n2 = normalize(g_modelPos-u_BVCenter);
+    vec3 fn = mix(n1,n2,0.5);
+
+    vec3 ambient;
+    if(u_useSkybox){
+
+        // vec3 specularity = fresnelSchlickRoughness(max(dot(fn, u_camera.position), 0.0), vec3(0.04),u_hair.roughness);
+        // vec3 kD = vec3(1.0)  - specularity;
+        // kD *= 1.0 - 0.0;	
+        vec3 irradiance = texture(u_irradianceMap, fn).rgb*u_scene.ambientIntensity;
+        //  irradiance = irradiance / (irradiance + vec3(1.0));
+        // const float GAMMA = 2.2;
+        // irradiance = pow(irradiance, vec3(1.0 / GAMMA));
+        // vec3 diffuse    = irradiance * u_hair.baseColor;
+        // ambient = diffuse *kD ;
+
+        ambient = computeLighting(u_hair.roughness+0.2,u_hair.shift,irradiance, u_hair.r,
+      false,
+      u_hair.trt);
+    }else{
+        vec3 ambient = (u_scene.ambientIntensity  * u_scene.ambientColor) *  u_hair.baseColor ;
+    }
+  // ambient = fn;
+  return ambient;
+}
 
 void main() {
 
-    vec3 color  = computeLighting();
+    vec3 color  = computeLighting(
+      u_hair.roughness,
+      u_hair.shift,
+      u_scene.lightColor*u_scene.lightIntensity,
+      u_hair.r,
+      u_hair.tt,
+      u_hair.trt);
+
     if(u_scene.castShadow==1.0){
         color*= 1.0 - computeShadow();
         if(u_hair.useScatter && u_hair.coloredScatter)
             color*= multipleScattering();
     }
 
-    vec3 ambient = (u_scene.ambientIntensity * u_scene.ambientColor) * u_hair.baseColor ;
+    //Ambient component
+    vec3 ambient = computeAmbient();
+
     color+=ambient;
 
-  if(u_hair.occlusion){
-    float occ = unsharpSSAO();
-    color-=vec3(occ);
-  }
+    if(u_hair.occlusion){
+      float occ = unsharpSSAO();
+      color-=vec3(occ);
+    }
 
+  //  color = color / (color + vec3(1.0));
+
+    //Gamma Correction
+    // const float GAMMA = 2.2;
+    // color = pow(color, vec3(1.0 / GAMMA));
 
     fragColor = vec4(color,1.0f);
 

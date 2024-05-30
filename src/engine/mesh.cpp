@@ -144,4 +144,29 @@ Mesh *Mesh::create_cube()
     return cube;
 }
 
+void Sphere::setup(Geometry *const g)
+{
+    glm::vec3 maxCoords = {0.0f, 0.0f, 0.0f};
+    glm::vec3 minCoords = {INFINITY, INFINITY, INFINITY};
+
+    for (const Vertex &v : g->vertices)
+    {
+        if (v.position.x > maxCoords.x)
+            maxCoords.x = v.position.x;
+        if (v.position.y > maxCoords.y)
+            maxCoords.y = v.position.y;
+        if (v.position.z > maxCoords.z)
+            maxCoords.z = v.position.z;
+        if (v.position.x < minCoords.x)
+            minCoords.x = v.position.x;
+        if (v.position.y < minCoords.y)
+            minCoords.y = v.position.y;
+        if (v.position.z < minCoords.z)
+            minCoords.z = v.position.z;
+    }
+
+    center = (maxCoords + minCoords) * 0.5f;
+    radius = glm::length( (maxCoords - minCoords) * 0.5f);
+}
+
 GLIB_NAMESPACE_END

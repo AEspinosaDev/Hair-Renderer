@@ -12,6 +12,7 @@ layout (binding = 0) uniform Camera
     mat4 viewProj;
     mat4 modelView;
     mat4 view;
+    vec3 position;
 }u_camera;
 
 uniform mat4 u_model;
@@ -23,6 +24,8 @@ out vec3 _normal;
 out vec2 _uv;
 out vec3 _color;
 
+out vec3 _wNormal;
+
 void main() {
 
     mat4 modelView = u_camera.view * u_model;
@@ -31,7 +34,8 @@ void main() {
 
     _modelPos = (u_model * vec4(position, 1.0)).xyz;
 
-    _normal = normalize(mat3(transpose(inverse(modelView))) * -normal);
+    _normal = normalize(mat3(transpose(inverse(modelView))) * normal);
+    _wNormal =  normalize(mat3(transpose(inverse(u_model))) * normal);
 
     _color = color;
 
@@ -49,6 +53,16 @@ in vec3 _modelPos;
 in vec3 _normal;
 in vec2 _uv;
 in vec3 _color;
+
+in vec3 _wNormal;
+
+layout (binding = 0) uniform Camera
+{
+    mat4 viewProj;
+    mat4 modelView;
+    mat4 view;
+    vec3 position;
+}u_camera;
 
 layout (binding = 1) uniform Scene
 {
@@ -74,6 +88,11 @@ uniform vec3 u_albedo;
 uniform sampler2D u_shadowMap;
 uniform sampler2D u_albedoMap;
 uniform bool u_hasAlbedoTex;
+uniform samplerCube u_irradianceMap;
+uniform bool u_useSkybox;
+
+uniform vec3 u_cameraPos;
+
 
 out vec4 FragColor;
 
@@ -85,6 +104,7 @@ struct Surface{
     float roughness; 
     float metalness; 
     float ao; 
+    vec3 F0;
 }s;
 
 
@@ -95,6 +115,10 @@ const float PI = 3.14159265359;
 vec3 fresnelSchlick(float cosTheta, vec3 F0) {
     return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}   
 
 //Normal Distribution
 //Trowbridge - Reitz GGX
@@ -139,8 +163,8 @@ vec3 computeLighting() {
     vec3 halfVector = normalize(lightDir + viewDir);
 
 	//Heuristic fresnel factor
-    vec3 F0 = vec3(0.04);
-    F0 = mix(F0, s.albedo, s.metalness);
+    s.F0 = vec3(0.04);
+    s.F0 = mix(s.F0, s.albedo, s.metalness);
 
 	//Radiance
     vec3 radiance = u_scene.lightColor * u_scene.lightIntensity; //* computeAttenuation(...)
@@ -149,7 +173,7 @@ vec3 computeLighting() {
 	// Cook-Torrance BRDF
     float NDF = distributionGGX(s.normal, halfVector, s.roughness);
     float G = geometrySmith(s.normal, viewDir, lightDir, s.roughness);
-    vec3 F = fresnelSchlick(max(dot(halfVector, viewDir), 0.0), F0);
+    vec3 F = fresnelSchlick(max(dot(halfVector, viewDir), 0.0), s.F0);
 
     vec3 kD = vec3(1.0) - F;
     kD *= 1.0 - s.metalness;
@@ -160,7 +184,7 @@ vec3 computeLighting() {
 
 	// Add to outgoing radiance result
     float lambertian = max(dot(s.normal, lightDir), 0.0);
-    return (kD * s.albedo / PI + specular) * radiance * lambertian;
+    return (kD * s.albedo  + specular) * radiance * lambertian;
 
 }
 bool isHairShadow(vec2 depthValue){
@@ -217,24 +241,40 @@ void main() {
     s.normal = _normal;
     s.albedo = u_hasAlbedoTex ? (texture(u_albedoMap, _uv).rgb) : u_albedo;
     s.opacity = 1.0;
-    s.roughness = 0.8;
+    s.roughness = 0.7;
     s.metalness = 0.0;
-    s.ao = 1.0;
+    s.ao =  max(texture(u_albedoMap, _uv).r,max(texture(u_albedoMap, _uv).g,texture(u_albedoMap, _uv).b));
 
     vec3 color = computeLighting();
     if(u_scene.castShadow==1.0) //If light cast shadows
         color*= 1.0 - computeShadow(false);
 
     //Ambient component
-    vec3 ambient = (u_scene.ambientIntensity * 0.1 * u_scene.ambientColor) * s.albedo * s.ao;
+    vec3 ambient;
+    if(u_useSkybox){
+        vec3 specularity = fresnelSchlickRoughness(max(dot(_wNormal, u_camera.position), 0.0), s.F0,s.roughness);
+        vec3 aDiffuse = vec3(1.0)  - specularity;
+        aDiffuse *= 1.0 - s.metalness;	
+        vec3 irradiance = texture(u_irradianceMap, _wNormal).rgb*u_scene.ambientIntensity;
+    //     irradiance = irradiance / (irradiance + vec3(1.0));
+
+    // //Gamma Correction
+    // const float GAMMA = 2.2;
+    // irradiance = pow(irradiance, vec3(1.0 / GAMMA));
+        vec3 diffuse      = irradiance * s.albedo;
+         ambient = (aDiffuse * diffuse) * s.ao;
+    }else{
+         ambient = (u_scene.ambientIntensity * 0.1 * u_scene.ambientColor) * s.albedo * s.ao;
+    }
     color += ambient;
+    
 
 	//Tone Up
-    color = color / (color + vec3(1.0));
+    // color = color / (color + vec3(1.0));
 
-    //Gamma Correction
-    const float GAMMA = 2.2;
-    color = pow(color, vec3(1.0 / GAMMA));
+    // //Gamma Correction
+    // const float GAMMA = 2.2;
+    // color = pow(color, vec3(1.0 / GAMMA));
 
     FragColor = vec4(color, 1.0);
 

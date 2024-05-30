@@ -1,6 +1,6 @@
 #include "hair_renderer.h"
 
-// #define YUKSEL
+#define YUKSEL
 // #define FXAA
 #define GLINT_EXTENT 16
 #define DEPTH_PREPASS
@@ -142,7 +142,6 @@ void HairRenderer::init()
     hairPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
     hairPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
 
-
     GraphicPipeline unlitPipeline{};
     unlitPipeline.shader = new Shader("resources/shaders/unlit.glsl", ShaderType::UNLIT);
     unlitPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
@@ -178,7 +177,7 @@ void HairRenderer::init()
     loaders::load_image(skin, "resources/images/head.png");
     skin->generate();
     headMaterial->set_texture("u_albedoMap", skin, 1);
-    headMaterial->set_texture("u_depthMap", m_depthFBO->get_attachments().front().texture, 2);
+    // headMaterial->set_texture("u_depthMap", m_depthFBO->get_attachments().front().texture, 2);
     m_head->set_material(headMaterial);
 
     Material *floorMaterial = new Material(litPipeline);
@@ -210,6 +209,10 @@ void HairRenderer::init()
 
     m_skybox->set_material(skyboxMaterial);
 
+    Texture *irradianceTexture = skymap->compute_irradiance(32);
+    headMaterial->set_texture("u_irradianceMap", irradianceTexture, 2);
+    hairMaterial->set_texture("u_irradianceMap", irradianceTexture, 3);
+
 #pragma endregion
 
 #pragma region MESH LOADING
@@ -221,7 +224,7 @@ void HairRenderer::init()
         loadThread1.detach();
         m_head->set_rotation({180.0f, -90.0f, 0.0f});
         m_head->set_scale(0.98f);
-        std::thread loadThread2(hair_loaders::load_cy_hair, m_hair, "resources/models/straight.hair");
+        std::thread loadThread2(hair_loaders::load_cy_hair, m_hair, "resources/models/curly.hair");
         loadThread2.detach();
 
         // Low poly
@@ -275,6 +278,7 @@ void HairRenderer::draw()
     camu.vp = m_camera->get_projection() * m_camera->get_view();
     camu.mv = m_camera->get_view() * m_head->get_model_matrix();
     camu.v = m_camera->get_view();
+    camu.position = m_camera->get_position();
     m_cameraUBO->cache_data(sizeof(CameraUniforms), &camu);
 
     GlobalUniforms globu;
@@ -326,6 +330,7 @@ void HairRenderer::forward_pass()
     headu.mat4Types["u_model"] = m_head->get_model_matrix();
     headu.vec3Types["u_albedo"] = m_headSettings.skinColor;
     headu.boolTypes["u_hasAlbedoTex"] = m_headSettings.useAlbedoTexture;
+    headu.boolTypes["u_useSkybox"] = m_globalSettings.useSkyboxIrradiance;
     m_head->get_material()->set_uniforms(headu);
 
     m_head->draw();
@@ -345,6 +350,13 @@ void HairRenderer::forward_pass()
     hairu.boolTypes["u_hair.useScatter"] = m_hairSettings.scatter;
     hairu.boolTypes["u_hair.coloredScatter"] = m_hairSettings.colorScatter;
     hairu.boolTypes["u_hair.occlusion"] = m_hairSettings.occlusion;
+    hairu.boolTypes["u_useSkybox"] = m_globalSettings.useSkyboxIrradiance;
+
+    glm::vec3 bvcenter = m_hair->get_bounding_volume() ? static_cast<Sphere *>(m_hair->get_bounding_volume())->center : glm::vec3(0.0);
+    hairu.vec3Types["u_BVCenter"] = glm::vec3(m_hair->get_model_matrix() * glm::vec4(bvcenter.x,
+                                                                                     bvcenter.y,
+                                                                                     bvcenter.z,
+                                                                                     1.0));
 #else
     hairu.vec3Types["u_albedo"] = m_hairSettings.color;
     hairu.vec3Types["u_spec1"] = m_hairSettings.specColor1;
@@ -354,7 +366,7 @@ void HairRenderer::forward_pass()
 #endif
     hairu.floatTypes["u_thickness"] = m_hairSettings.thickness;
     hairu.mat4Types["u_model"] = m_hair->get_model_matrix();
-    hairu.vec3Types["u_camPos"] = m_camera->get_position();
+    // hairu.vec3Types["u_camPos"] = m_camera->get_position();
     m_hair->get_material()->set_uniforms(hairu);
 
     m_hair->draw(true, GL_LINES);
@@ -521,6 +533,7 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::Separator();
     ImGui::SeparatorText("Lighting Settings");
     ImGui::ColorEdit3("Clear color", (float *)&m_globalSettings.ambientColor);
+    ImGui::Checkbox("Use skybox as ambient light", &m_globalSettings.useSkyboxIrradiance);
     ImGui::DragFloat("Enviroment rotation", &m_globalSettings.enviromentRotation, 1.0f, -180.0f, 180.0f);
     ImGui::DragFloat("Enviroment intensity", &m_globalSettings.ambientStrength, 0.1f, 0.0f, 10.0f);
     gui::draw_light_widget(m_light.light);

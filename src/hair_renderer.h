@@ -63,6 +63,7 @@ private:
         glm::mat4 vp;
         glm::mat4 mv;
         glm::mat4 v;
+        glm::vec3 position;
     };
     struct GlobalUniforms
     {

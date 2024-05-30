@@ -25,7 +25,7 @@ struct TextureConfig
 
     bool useMipmaps{true};
     int magFilter{GL_LINEAR};
-    int minFilter{GL_LINEAR_MIPMAP_LINEAR};
+    int minFilter{GL_LINEAR};
 
     int wrapT{GL_REPEAT};
     int wrapS{GL_REPEAT};
@@ -71,6 +71,7 @@ protected:
     void panorama_to_cubemap();
 
     static Shader *HDRIConverterShader;
+    static Shader *IrradianceComputeShader;
 
 public:
     Texture(Extent2D extent) : m_extent(extent) {}
@@ -107,6 +108,8 @@ public:
     }
 
     void generate_mipmaps();
+
+    Texture* compute_irradiance(int resolution = 32);
 };
 
 GLIB_NAMESPACE_END

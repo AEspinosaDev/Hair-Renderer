@@ -36,6 +36,34 @@ struct Geometry
     bool indexed;
 };
 
+#pragma region BV
+
+/*
+Bounding volume base struct
+*/
+struct Volume
+{
+    virtual void setup(Geometry *const g) = 0;
+};
+struct Sphere : public Volume
+{
+    glm::vec3 center{0.0f, 0.0f, 0.0f};
+    float radius{0.0f};
+
+    Sphere() = default;
+
+    Sphere(const glm::vec3 c, const float r) : center(c), radius(r) {}
+
+    virtual void setup(Geometry *const g);
+};
+struct AABB : public Volume
+{
+    // TO DO
+};
+
+#pragma endregion
+#pragma region MESH
+
 class Mesh : public Object3D
 {
 protected:
@@ -43,6 +71,8 @@ protected:
 
     Geometry m_geometry;
     Material *m_material;
+
+    Volume *m_bv{nullptr};
 
     bool m_geometry_loaded{false};
     bool m_buffer_loaded{false};
@@ -52,8 +82,10 @@ protected:
 public:
     Mesh() : Object3D("Mesh", {0.0f, 0.0f, 0.0f}, Object3DType::MESH), m_material(nullptr) { Mesh::INSTANCED_MESHES++; }
     Mesh(Geometry &geometry, Material *const material) : Object3D("Mesh", {0.0f, 0.0f, 0.0f}, Object3DType::MESH), m_material(material), m_geometry(geometry) { Mesh::INSTANCED_MESHES++; }
-    ~Mesh(){
-        GL_CHECK(glDeleteVertexArrays(1, &m_vao));
+    ~Mesh()
+    {
+        Mesh::INSTANCED_MESHES--;
+        cleanup();
         delete m_material;
     }
 
@@ -74,15 +106,30 @@ public:
 
     inline static int get_number_of_instances() { return INSTANCED_MESHES; }
 
+    inline void cleanup()
+    {
+        GL_CHECK(glDeleteVertexArrays(1, &m_vao));
+    }
+
+    inline void setup_bounding_volume()
+    {
+        if (!m_bv)
+            m_bv = new Sphere();
+
+        m_bv->setup(&m_geometry);
+    }
+
+    inline Volume *get_bounding_volume() const { return m_bv; }
+
     /*
     Creates a screen quad for rendering textures onto the screen. Useful for postprocess and deferred screen space methods
     */
-    static Mesh* create_screen_quad();
+    static Mesh *create_screen_quad();
 
-    static Mesh* create_cube();
-
+    static Mesh *create_cube();
 };
 
+#pragma endregion
 
 GLIB_NAMESPACE_END
 

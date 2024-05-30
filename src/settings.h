@@ -35,7 +35,7 @@ struct HairSettings
 
     bool glints = true;
 
-    bool occlusion = true;
+    bool occlusion = false;
 #else
     // glm::vec3 color = glm::vec3(0.95f, 0.65f, 0.16f);
     glm::vec3 color = glm::vec3(0.6f, 0.078f, 0.078f);
@@ -57,10 +57,12 @@ struct GlobalSettings
 {
     bool showUI{true};
     glm::vec3 ambientColor = glm::vec3(1.0f);
-    float ambientStrength = 0.3f;
+    float ambientStrength = 0.5f;
     float enviromentRotation = 0.0f;
+    bool useSkyboxIrradiance = false;
     Extent2D shadowExtent = {2048, 2048};
     unsigned int samples = 8;
+    
 };
 
 #endif

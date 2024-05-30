@@ -473,7 +473,7 @@ void hair_loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh
         Geometry g;
         g.vertices = vertices;
         g.indices = indices;
-        augmentDensity(g, 80000);
+        augmentDensity(g, 40000);
         mesh->set_geometry(g);
 
         return;
@@ -744,4 +744,5 @@ void hair_loaders::load_cy_hair(Mesh *const mesh, const char *fileName)
     g.vertices = vertices;
     g.indices = indices;
     mesh->set_geometry(g);
+    mesh->setup_bounding_volume();
 }

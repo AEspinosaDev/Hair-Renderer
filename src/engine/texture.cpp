@@ -3,6 +3,7 @@
 GLIB_NAMESPACE_BEGIN
 
 Shader *Texture::HDRIConverterShader = nullptr;
+Shader *Texture::IrradianceComputeShader = nullptr;
 
 void Texture::generate()
 {
@@ -158,6 +159,83 @@ void Texture::generate_mipmaps()
 {
     bind();
     GL_CHECK(glGenerateMipmap(m_config.type));
+}
+
+Texture *Texture::compute_irradiance(int resolution)
+{
+    if (m_config.type != TextureType::TEXTURE_CUBEMAP)
+    {
+        ERR_LOG("Texture must be a CUBEMAP in order to compute irradiance");
+        return nullptr;
+    }
+
+    if (!Texture::IrradianceComputeShader) // If null, create utility irradiance compute shader
+    {
+        ShaderStageSource source{};
+        source.vertexBit = utils::IrradianceComputeVertexSource;
+        source.fragmentBit = utils::IrradianceComputeFragmentSource;
+        Texture::IrradianceComputeShader = new Shader(source, ShaderType::OTHER);
+    }
+
+    Texture *irradianceMap = new Texture({resolution, resolution}, m_config);
+    irradianceMap->generate();
+
+    // Creation of capture FBO
+    unsigned int captureFBO, captureRBO;
+    GL_CHECK(glGenFramebuffers(1, &captureFBO));
+    GL_CHECK(glGenRenderbuffers(1, &captureRBO));
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, captureFBO));
+    GL_CHECK(glBindRenderbuffer(GL_RENDERBUFFER, captureRBO));
+    GL_CHECK(glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, resolution, resolution));
+    GL_CHECK(glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, captureRBO));
+
+    // Create projection an view matrices
+    glm::mat4 captureProjection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
+    glm::mat4 captureViews[] =
+        {
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(-1.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f)),
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, -1.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f)),
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec3(0.0f, -1.0f, 0.0f)),
+            glm::lookAt(glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec3(0.0f, -1.0f, 0.0f))};
+
+    GLuint cubeVBO, cubeVAO;
+    GL_CHECK(glGenVertexArrays(1, &cubeVAO));
+    GL_CHECK(glGenBuffers(1, &cubeVBO));
+    GL_CHECK(glBindVertexArray(cubeVAO));
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, cubeVBO));
+    GL_CHECK(glBufferData(GL_ARRAY_BUFFER, sizeof(utils::cubeVertices), utils::cubeVertices, GL_STATIC_DRAW));
+    GL_CHECK(glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void *)0));
+    GL_CHECK(glEnableVertexAttribArray(0));
+    GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0));
+
+    Texture::IrradianceComputeShader->bind();
+    Texture::IrradianceComputeShader->set_int("u_envMap", 0);
+    Texture::IrradianceComputeShader->set_mat4("u_proj", captureProjection);
+
+    bind();
+
+    GL_CHECK(glViewport(0, 0, resolution, resolution));
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, captureFBO));
+    for (unsigned int i = 0; i < 6; ++i)
+    {
+        Texture::IrradianceComputeShader->set_mat4("u_view", captureViews[i]);
+        GL_CHECK(glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                                        GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, irradianceMap->get_id(), 0));
+        GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
+    GL_CHECK(glBindVertexArray(0));
+    GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, 0));
+
+    //Free temp resources
+    GL_CHECK(glDeleteFramebuffers(1, &captureFBO));
+    GL_CHECK(glDeleteRenderbuffers(1, &captureRBO));
+    GL_CHECK(glDeleteVertexArrays(1, &cubeVAO));
+
+    return irradianceMap;
 }
 
 void Texture::panorama_to_cubemap()

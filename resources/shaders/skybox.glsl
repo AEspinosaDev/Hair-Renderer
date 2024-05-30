@@ -27,5 +27,11 @@ uniform samplerCube u_skymap;
 
 void main()
 {    
-     fragColor = vec4(texture(u_skymap, _uv).rgb,1.0);
+    vec3 color =texture(u_skymap, _uv).rgb;
+    color = color / (color + vec3(1.0));
+
+    const float GAMMA = 2.2;
+    color = pow(color, vec3(1.0 / GAMMA));
+
+    fragColor = vec4(color,1.0);
 }
