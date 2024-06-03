@@ -2,86 +2,104 @@
 #define __GENERATOR__
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 
+#define DEBUG_MODE
+#define DEBUG_LOG(msg)                 \
+    {                                  \
+        std::cout << msg << std::endl; \
+    }
+
 #include <vector>
-
-#include "../engine/core.h"
-#include "../engine/shader.h"
-
-USING_NAMESPACE_GLIB
+#include <math.h>
+#include <stb_image_write.h>
+#include "gmath.hpp"
 
 typedef unsigned int uint;
+using namespace math;
 
-namespace gen
+namespace LUTGen
 {
-    uint create_buffer(const std::vector<float> &data)
+    struct HairConstants
     {
-        uint vbo;
-        GL_CHECK(glGenBuffers(1, &vbo));
-        GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, vbo));
-        GL_CHECK(glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), data.data(), GL_STATIC_DRAW));
-        GL_CHECK(glBindBuffer(GL_ARRAY_BUFFER, 0));
-        return vbo;
-    }
+        double aR = -10.0;
+        double aTT = -aR * 0.5;
+        double aTRT = -3.0 * aR * 0.5;
 
-    void tex2file(uint texture, int width, int height, const char *filename)
-    {
-        std::vector<float> data(width * height);
+        double bR = 5.0;
+        double bTT = bR * 0.5;
+        double bTRT = 2.0 * bR;
 
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, texture));
-        GL_CHECK(glGetTexImage(GL_TEXTURE_2D, 0, GL_RED, GL_FLOAT, data.data()));
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+        double eta = 1.55;
+        double absorption = 0.2;
+        double eccentricity = 0.85;
 
-        std::vector<unsigned char> imageData(width * height);
-        for (int i = 0; i < width * height; ++i)
-        {
-            imageData[i] = static_cast<unsigned char>(data[i] * 255.0f); // Assuming the data is in the range [0.0, 1.0]
-        }
+        double kG = 0.5;
+        double wc = 10.0;
+        double Dh0 = 0.2;
+        double DhM = 0.5;
+    };
 
-        stbi_write_png(filename, width, height, 1, imageData.data(), width);
-    }
-
-    void compute_M()
+    void compute_M(const char *filename, uint resolution, std::vector<double> shifts, std::vector<double> betas)
     {
 
-        // Create and set up compute M shader
-        ComputeShader shader(SHADERS_PATH "m.glsl");
+        const uint SIZE = resolution;
+        // matrix
+        std::vector<std::vector<Color>> G(SIZE, std::vector<Color>(SIZE, Color(0.0)));
 
-        // Create VBOS for the shader to work with
-        std::vector<float> wi = {1.0f, 2.0f, 3.0f, 4.0f};
-        std::vector<float> wo = {5.0f, 6.0f, 7.0f, 8.0f};
+        // Fetch max terms
+        Color max{0.0};
+        for (size_t x = 0; x < SIZE; x++)
+            for (size_t y = 0; y < SIZE; y++)
+            {
+                double sin_thI = -1.0 + (x * 2.0) / SIZE;
+                double sin_thR = -1.0 + (y * 2.0) / SIZE;
+                double thI = (180.0 * asin(sin_thI) / M_PI);
+                double thR = (180.0 * asin(sin_thR) / M_PI);
+                double thH = (thR + thI) / 2.0;
 
-        uint wiBuffer = create_buffer(wi);
-        uint woBUffer = create_buffer(wo);
+                double thH_R = thH - shifts[0];
+                double thH_TT = thH - shifts[1];
+                double thH_TRT = thH - shifts[2];
 
-        // Create a texture as output
-        uint lut;
-        GL_CHECK(glGenTextures(1, &lut));
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, lut));
-        GL_CHECK(glTexStorage2D(GL_TEXTURE_2D, 1, GL_R32F, 4, 1));
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+                double g_R = math::gaussian_distribution(betas[0], thH_R);
+                double g_TT = math::gaussian_distribution(betas[1], thH_TT);
+                double g_TRT = math::gaussian_distribution(betas[2], thH_TRT);
 
-        // Compute
-        GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, wiBuffer));
-        GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, woBUffer));
-        GL_CHECK(glBindImageTexture(0, lut, 0, GL_FALSE, 0, GL_WRITE_ONLY, GL_R32F));
+                Color g = Color(g_R, g_TT, g_TRT);
 
-        shader.bind();
-        shader.dispatch(
-            {4, 1, 1},
-            true,
-            GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+                if (g.r > max.r) // Max R
+                    max.r = g.r;
+                if (g.g > max.g) // Max TT
+                    max.g = g.g;
+                if (g.b > max.b) // Max TRT
+                    max.b = g.b;
 
-        // Save results in image
-        tex2file(lut,4,1,"m_lut.png");
-        std::cout << "Succesfully compute Marschner M Term..." << std::endl;
+                G[x][y] = g;
+            }
 
-        // Cleanup
-        shader.cleanup();
-        GL_CHECK(glDeleteBuffers(1, &wiBuffer));
-        GL_CHECK(glDeleteBuffers(1, &woBUffer));
-        GL_CHECK(glDeleteTextures(1, &lut));
+#ifdef DEBUG_MODE
+        DEBUG_LOG("Max R = " << max.r*255.0 << "/255");
+        DEBUG_LOG("Max TT = " << max.g*255.0 << "/255");
+        DEBUG_LOG("Max TRT = " << max.b*255.0 << "/255");
+#endif
+        const uint CHANNELS = 3;
+        const uint TOTAL_SIZE = SIZE * SIZE * CHANNELS;
+        std::vector<unsigned char> imageData(TOTAL_SIZE);
+        // Normalize and save to file
+        for (size_t x = 0; x < SIZE; x++)
+            for (size_t y = 0; y < SIZE; y++)
+            {
+                Color norm_g = G[x][y] / max;
+
+                uint linearID = (y * SIZE + x) * CHANNELS;
+                imageData[linearID + 0] = static_cast<unsigned char>(norm_g.r * 255.0);
+                imageData[linearID + 1] = static_cast<unsigned char>(norm_g.g * 255.0);
+                imageData[linearID + 2] = static_cast<unsigned char>(norm_g.b * 255.0);
+            }
+
+        stbi_write_png(filename, SIZE, SIZE, CHANNELS, imageData.data(), SIZE * CHANNELS);
+
+        std::cout << "Succesfully computed Marschner M Term..." << std::endl;
     }
-
 }
 
 #endif

@@ -30,7 +30,8 @@ target_link_libraries(HairViewer PRIVATE Engine)
 add_executable(LUTGenerator 
 "src/marschner/main.cpp" 
 "src/marschner/generator.hpp")
-target_link_libraries(LUTGenerator PRIVATE Engine)
+# target_link_libraries(LUTGenerator PRIVATE Engine)
+target_include_directories(LUTGenerator PUBLIC ${CMAKE_SOURCE_DIR}/deps)
 
 
 set_target_properties(HairViewer PROPERTIES

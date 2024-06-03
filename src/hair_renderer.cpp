@@ -1,7 +1,7 @@
 #include "hair_renderer.h"
 
 #define YUKSEL
-// #define FXAA
+#define FXAA
 #define GLINT_EXTENT 16
 #define DEPTH_PREPASS
 
@@ -79,6 +79,8 @@ void HairRenderer::init()
     colorConfig.format = GL_RGBA;
     colorConfig.internalFormat = GL_RGBA16;
     colorConfig.dataType = GL_UNSIGNED_BYTE;
+    colorConfig.useMipmaps=false;
+    
 
     Attachment colorAttachment{};
     colorAttachment.texture = new Texture(m_window.extent, colorConfig);

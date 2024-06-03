@@ -6,37 +6,19 @@ int main(int, char **)
 {
     try
     {
-        if (!glfwInit())
-        {
-            GLFW_CHECK();
-            exit(EXIT_FAILURE);
-        }
+        LUTGen::HairConstants constants{};
+        LUTGen::compute_M(
+            "m.png",
+            1024,
 
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+            {constants.aR,
+             constants.aTT,
+             constants.aTRT},
 
-        GLFWwindow *window;
-        window = glfwCreateWindow(100, 100, "Dummy", NULL, NULL);
-        if (!window)
-        {
-            glfwTerminate();
-            GLFW_CHECK();
-            exit(EXIT_FAILURE);
-        }
+            {constants.bR,
+             constants.bTT,
+             constants.bTRT});
 
-        glfwMakeContextCurrent(window);
-        if (glewInit() != GLEW_OK)
-        {
-            fprintf(stderr, "Failed to initialize GLEW\n");
-        }
-
-        glfwSwapInterval(0);
-
-        gen::compute_M();
-
-        glfwDestroyWindow(window);
-        glfwTerminate();
     }
     catch (const std::exception &e)
     {
