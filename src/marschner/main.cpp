@@ -7,6 +7,9 @@ int main(int, char **)
     try
     {
         LUTGen::HairConstants constants{};
+        //Reading from texture => 
+        //u = sin_I
+        //v = sin_R
         LUTGen::compute_M(
             "m.png",
             1024,
@@ -19,6 +22,10 @@ int main(int, char **)
              constants.bTT,
              constants.bTRT});
 
+        //Reading from texture => 
+        //u = sin_I
+        //v = sin_R
+        LUTGen::compute_N("n.png", 1024, constants);
     }
     catch (const std::exception &e)
     {
