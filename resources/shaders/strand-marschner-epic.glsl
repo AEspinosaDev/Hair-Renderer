@@ -367,13 +367,17 @@ float getLuminance(vec3 li){
 
 vec3 multipleScattering(){
   
-  vec3 l = normalize(u_scene.lightPos.xyz- g_pos);  //Light vector
-  vec3 r = normalize(-g_pos);       
-  vec3 u = normalize(g_dir); 
+   vec3 l = normalize(u_scene.lightPos.xyz- g_pos);  //Light vector
+  // vec3 r = normalize(-g_pos);       
+  // vec3 u = normalize(g_dir); 
+
+   vec3 n1 = cross(g_modelDir, cross(u_camera.position, g_modelDir));
+    vec3 n2 = normalize(g_modelPos-u_BVCenter);
+    vec3 fn = mix(n1,n2,0.5);
   
   // vec3 n = normalize(r - u * dot(u,r));
-  //  float wrapLight = (dot(n,l)+1.0)/(4.0*PI);
-  vec3 scattering = pow(u_hair.baseColor/getLuminance(u_scene.lightColor),vec3(scatterWeight));
+   float wrapLight = (dot(fn,l)+1.0)/(4.0*PI);
+  vec3 scattering = sqrt(u_hair.baseColor) * wrapLight * pow(u_hair.baseColor/getLuminance(u_scene.lightColor),vec3(scatterWeight));
   return scattering;
 
 }
@@ -433,7 +437,7 @@ vec3 computeAmbient(){
     //Should be world space. 2 fake normals
     vec3 n1 = cross(g_modelDir, cross(u_camera.position, g_modelDir));
     vec3 n2 = normalize(g_modelPos-u_BVCenter);
-    vec3 fn = mix(n1,n2,0.5);
+    vec3 fn = n2;
 
     vec3 ambient;
     if(u_useSkybox){
@@ -477,7 +481,7 @@ void main() {
     if(u_scene.castShadow==1.0){
         color*= 1.0 - computeShadow();
         if(u_hair.useScatter && u_hair.coloredScatter)
-            color*= multipleScattering();
+            color+= multipleScattering();
     }
 
     //Ambient component

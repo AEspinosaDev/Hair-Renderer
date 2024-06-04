@@ -11,6 +11,7 @@
 #include <vector>
 #include <math.h>
 #include <stb_image_write.h>
+
 #include "gmath.hpp"
 
 typedef unsigned int uint;
@@ -57,6 +58,19 @@ namespace LUTGen
         double wc = 10.0;
         double Dh0 = 0.2;
         double DhM = 0.5;
+
+        HairConstants(){}
+        HairConstants(double shift, double beta, double _eta = 1.55, double _absorption = 0.2) : aR(-shift),
+                                                                      aTT(-shift * 0.5),
+                                                                      aTRT(-3.0 * shift * 0.5),
+                                                                      bR(beta),
+                                                                      bTT(beta*0.5),
+                                                                      bTRT(beta *2.0),
+                                                                      eta(_eta),
+                                                                      absorption(_absorption){}
+
+
+
     };
 
 #pragma region Longitudinal Term
@@ -143,7 +157,7 @@ namespace LUTGen
                 double thD = acos(cos_thD);
 
                 double n_R = N_P(0, phiD, thD, constants.eta, constants.absorption);
-                 double n_TT = N_P(1, phiD, thD, constants.eta, constants.absorption);
+                double n_TT = N_P(1, phiD, thD, constants.eta, constants.absorption);
                 double n_TRT = N_P(2, phiD, thD, constants.eta, constants.absorption);
 
                 Color n = Color(n_R, n_TT, n_TRT);
@@ -153,8 +167,6 @@ namespace LUTGen
                 imageData[linearID + 0] = static_cast<unsigned char>(n.r * 255.0);
                 imageData[linearID + 1] = static_cast<unsigned char>(n.g * 255.0);
                 imageData[linearID + 2] = static_cast<unsigned char>(n.b * 255.0);
-
-             
             }
 
         stbi_write_png(filename, SIZE, SIZE, CHANNELS, imageData.data(), SIZE * CHANNELS);

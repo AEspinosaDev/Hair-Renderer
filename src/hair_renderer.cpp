@@ -1,7 +1,8 @@
 #include "hair_renderer.h"
 
 #define YUKSEL
-#define FXAA
+// #define FXAA
+// #define EPIC
 #define GLINT_EXTENT 16
 #define DEPTH_PREPASS
 
@@ -79,8 +80,7 @@ void HairRenderer::init()
     colorConfig.format = GL_RGBA;
     colorConfig.internalFormat = GL_RGBA16;
     colorConfig.dataType = GL_UNSIGNED_BYTE;
-    colorConfig.useMipmaps=false;
-    
+    colorConfig.useMipmaps = false;
 
     Attachment colorAttachment{};
     colorAttachment.texture = new Texture(m_window.extent, colorConfig);
@@ -137,7 +137,11 @@ void HairRenderer::init()
 
     GraphicPipeline hairPipeline{};
 #ifdef MARSCHNER
-    hairPipeline.shader = new Shader("resources/shaders/strand-marschner.glsl", ShaderType::LIT);
+#ifdef EPIC
+    hairPipeline.shader = new Shader("resources/shaders/strand-marschner-epic.glsl", ShaderType::LIT);
+#else
+    hairPipeline.shader = new Shader("resources/shaders/strand-marschner-pre.glsl", ShaderType::LIT);
+#endif
 #else
     hairPipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
 #endif
@@ -214,6 +218,19 @@ void HairRenderer::init()
     Texture *irradianceTexture = skymap->compute_irradiance(32);
     headMaterial->set_texture("u_irradianceMap", irradianceTexture, 2);
     hairMaterial->set_texture("u_irradianceMap", irradianceTexture, 3);
+
+#ifndef EPIC
+    //Marschner M term
+    Texture *marschnerM = new Texture();
+    loaders::load_image(marschnerM, "resources/images/m.png");
+    marschnerM->generate();
+    hairMaterial->set_texture("u_m", marschnerM, 4);
+    //Marschner N term
+    Texture *marschnerN = new Texture();
+    loaders::load_image(marschnerN, "resources/images/n.png");
+    marschnerN->generate();
+    hairMaterial->set_texture("u_n", marschnerN, 5);
+#endif
 
 #pragma endregion
 
@@ -502,7 +519,7 @@ void HairRenderer::setup_user_interface_frame()
     {
         set_v_sync(m_settings.vSync);
     }
-    ImGui::DragFloat("Camera Exposure",&m_globalSettings.exposure);
+    ImGui::DragFloat("Camera Exposure", &m_globalSettings.exposure);
     ImGui::Separator();
     ImGui::SeparatorText("Hair Settings");
     gui::draw_transform_widget(m_hair);
