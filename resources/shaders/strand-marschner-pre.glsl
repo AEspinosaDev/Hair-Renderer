@@ -230,32 +230,36 @@ vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bo
   }
 
   //Theta & Phi
-  float sinThetaWi = dot(wi,u);
-  float sinThetaV  = dot(v,u);
-  vec3 wiPerp      = wi - sinThetaWi * u;
-  vec3 vPerp       = v - sinThetaV * u;
-  float cosPhiD    = dot(wiPerp,vPerp)/sqrt(dot(wiPerp,wiPerp)*dot(vPerp,vPerp));
-
-  // Diff
-  float thetaD    = (asin(sinThetaWi)-asin(sinThetaV))/2;
-  float cosThetaD = cos(thetaD);
+  float sin_thI = dot(u,wi);
+  float sin_thR  = dot(u,v);
+  vec3 wiPerp    = wi - sin_thI * u;
+  vec3 vPerp     = v - sin_thR * u;
+  float cos_phiD = dot(vPerp,wiPerp)*inversesqrt(dot(wiPerp,wiPerp)*dot(vPerp,vPerp));
+  float cos_thD    = cos((asin(sin_thI)-asin(sin_thR))/2.0);
 
   //LUTs
   //Marschner M
-  vec2 uvM = vec2(0.5*sinThetaWi+0.5,0.5*sinThetaV+0.5);
-  vec3 mM  = texture(u_m,uvM).rgb; 
+  vec2 uvM = vec2(sin_thI,sin_thR)*0.5+0.5;
+  vec4 mM  = texture(u_m,uvM).rgba; 
+  // float cos_thD = mM.a; 
   //Marschner N
-  vec2 uvN = vec2((0.5*cosThetaD+0.5),1-(0.5*cosPhiD+0.5));
-  vec3 mN  = texture(u_n,uvN).rgb;
+  // vec2 uvN = vec2(0.5*cosPhiD+0.5,1.0-cosThetaD);
+  vec2 uvN = vec2(cos_phiD,cos_thD)*0.5+0.5;
+  vec4 mN  = texture(u_n,uvN).rgba;
 
-  float R  = r ?   mM.r * mN.r : 0.0; 
+  float R   = r ?   mM.r * mN.r : 0.0; 
   float TT  = tt ?  mM.g * mN.g : 0.0; 
-  // vec3 TRT = trt ? mM.b * mN.b : vec3(0.0); 
+  float TRT = trt ? mM.b * mN.b: 0.0; 
 
-  vec3 specular = vec3(R+TT)/(cosThetaD*cosThetaD);
+  vec3 absColor = u_hair.baseColor;
+
+  vec3 specular = vec3(R+TT+TRT)/max(0.2,cos_thD*cos_thD);
+  specular*= radiance;
+
   vec3 diffuse  = u_hair.baseColor;
 
-  return (specular+diffuse) * radiance;
+  // return (specular+diffuse) * radiance;
+  return specular;
 
 }
 

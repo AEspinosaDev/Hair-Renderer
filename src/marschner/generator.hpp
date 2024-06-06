@@ -42,11 +42,11 @@ namespace LUTGen
 
     struct HairConstants
     {
-        double aR = -10.0;
+        double aR = -10.0; //(-10º to -5º)
         double aTT = -aR * 0.5;
         double aTRT = -3.0 * aR * 0.5;
 
-        double bR = 5.0;
+        double bR = 10.0; //(5º to 10º)
         double bTT = bR * 0.5;
         double bTRT = 2.0 * bR;
 
@@ -59,27 +59,42 @@ namespace LUTGen
         double Dh0 = 0.2;
         double DhM = 0.5;
 
-        HairConstants(){}
-        HairConstants(double shift, double beta, double _eta = 1.55, double _absorption = 0.2) : aR(-shift),
-                                                                      aTT(-shift * 0.5),
-                                                                      aTRT(-3.0 * shift * 0.5),
-                                                                      bR(beta),
-                                                                      bTT(beta*0.5),
-                                                                      bTRT(beta *2.0),
-                                                                      eta(_eta),
-                                                                      absorption(_absorption){}
-
-
-
+        HairConstants() {}
+        HairConstants(double shiftDeg, double betaDeg, double _eta = 1.55, double _absorption = 0.2) : aR(-shiftDeg),
+                                                                                                 aTT(-shiftDeg * 0.5),
+                                                                                                 aTRT(-3.0 * shiftDeg * 0.5),
+                                                                                                 bR(betaDeg),
+                                                                                                 bTT(betaDeg * 0.5),
+                                                                                                 bTRT(betaDeg * 2.0),
+                                                                                                 eta(_eta),
+                                                                                                 absorption(_absorption) {}
     };
 
 #pragma region Longitudinal Term
     void compute_M(const char *filename, uint resolution, std::vector<double> shifts, std::vector<double> betas)
     {
+        // COnvert to radians
+        auto deg2rad = [](double deg)
+        { return deg * M_PI / 180.0; };
+
+        shifts[0] = deg2rad(shifts[0]);
+        shifts[1] = deg2rad(shifts[1]);
+        shifts[2] = deg2rad(shifts[2]);
+
+        betas[0] = deg2rad(betas[0]);
+        betas[1] = deg2rad(betas[1]);
+        betas[2] = deg2rad(betas[2]);
+
 
         const uint SIZE = resolution;
+        struct RGBA
+        {
+            Color color;
+            double cos_thD;
+        };
+        
         // matrix
-        std::vector<std::vector<Color>> G(SIZE, std::vector<Color>(SIZE, Color(0.0)));
+        std::vector<std::vector<RGBA>> G(SIZE, std::vector<RGBA>(SIZE, {Color(0.0),0.0}));
 
         // Fetch max terms
         Color max{0.0};
@@ -88,17 +103,18 @@ namespace LUTGen
             {
                 double sin_thI = -1.0 + (x * 2.0) / SIZE;
                 double sin_thR = -1.0 + (y * 2.0) / SIZE;
-                double thI = (180.0 * asin(sin_thI) / M_PI);
-                double thR = (180.0 * asin(sin_thR) / M_PI);
+                double thI = asin(sin_thI);
+                double thR = asin(sin_thR);
                 double thH = (thR + thI) / 2.0;
+                double thD = (thR - thI) / 2.0;
 
-                double thH_R = thH - shifts[0];
-                double thH_TT = thH - shifts[1];
-                double thH_TRT = thH - shifts[2];
+                double g_R = math::gaussian_distribution(betas[0], 2.0*(thH- shifts[0]));
+                double g_TT = math::gaussian_distribution(betas[1], thH- shifts[1]);
+                double g_TRT = math::gaussian_distribution(betas[2], thH- shifts[2]);
 
-                double g_R = math::gaussian_distribution(betas[0], thH_R);
-                double g_TT = math::gaussian_distribution(betas[1], thH_TT);
-                double g_TRT = math::gaussian_distribution(betas[2], thH_TRT);
+                // double g_R = math::energy_conservant_gaussian_distribution(betas[0], thI, thR - shifts[0] );
+                // double g_TT = math::energy_conservant_gaussian_distribution(betas[1], thI, thR - shifts[1]);
+                // double g_TRT = math::energy_conservant_gaussian_distribution(betas[2], thI, thR - shifts[2]);
 
                 Color g = Color(g_R, g_TT, g_TRT);
 
@@ -109,28 +125,29 @@ namespace LUTGen
                 if (g.b > max.b) // Max TRT
                     max.b = g.b;
 
-                G[x][y] = g;
+                G[x][y] = {g,cos(thD)};
             }
 
 #ifdef DEBUG_MODE
         DEBUG_LOG("Longitudinal Term");
-        DEBUG_LOG("Max R = " << max.r * 255.0 << "/255");
-        DEBUG_LOG("Max TT = " << max.g * 255.0 << "/255");
-        DEBUG_LOG("Max TRT = " << max.b * 255.0 << "/255");
+        DEBUG_LOG("Max R = " << max.r);
+        DEBUG_LOG("Max TT = " << max.g);
+        DEBUG_LOG("Max TRT = " << max.b);
 #endif
-        const uint CHANNELS = 3;
+        const uint CHANNELS = 4;
         const uint TOTAL_SIZE = SIZE * SIZE * CHANNELS;
         std::vector<unsigned char> imageData(TOTAL_SIZE);
         // Normalize and save to file
         for (size_t x = 0; x < SIZE; x++)
             for (size_t y = 0; y < SIZE; y++)
             {
-                Color norm_g = G[x][y] / max;
+                Color norm_g = G[x][y].color / max;
 
                 uint linearID = (y * SIZE + x) * CHANNELS;
-                imageData[linearID + 0] = static_cast<unsigned char>(norm_g.r * 255.0);
-                imageData[linearID + 1] = static_cast<unsigned char>(norm_g.g * 255.0);
-                imageData[linearID + 2] = static_cast<unsigned char>(norm_g.b * 255.0);
+                imageData[linearID + 0] = static_cast<unsigned char>(norm_g.r * 255.0);                  //R
+                imageData[linearID + 1] = static_cast<unsigned char>(norm_g.g * 255.0);                  //TT
+                imageData[linearID + 2] = static_cast<unsigned char>(norm_g.b * 255.0);                  //TRT
+                imageData[linearID + 3] = static_cast<unsigned char>((G[x][y].cos_thD*0.5+0.5) * 255.0); //Cos Theta D
             }
 
         stbi_write_png(filename, SIZE, SIZE, CHANNELS, imageData.data(), SIZE * CHANNELS);

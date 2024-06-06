@@ -70,18 +70,27 @@ namespace math
         return 1.0 / sinh_x;
     }
 
+    unsigned long long factorial(int n)
+    {
+        if (n == 0)
+            return 1;
+        unsigned long long result = 1;
+        for (int i = 1; i <= n; ++i)
+        {
+            result *= i;
+        }
+        return result;
+    }
+
     // First kind bessel
     double I_0(double x)
     {
-        auto factorial = [](int n)
-        {
-            return tgamma(n + 1);
-        };
+       
 
         double sum = 0.0;
         for (int i = 0; i <= 10; i++)
         {
-            double numerator = pow(x * x, i);
+            double numerator = pow(x, 2*i);
             double denominator = pow(4, i) * pow(factorial(i), 2);
             sum += numerator / denominator;
         }
@@ -89,12 +98,14 @@ namespace math
     }
 
     // Spherical gaussian convolution over a dirac circle - https://www.researchgate.net/publication/220506677_An_Energy-Conserving_Hair_Reflectance_Model
-    double energy_conservant_gaussian_distribution(double beta, double sin_minus_I, double sin_R)
+    double energy_conservant_gaussian_distribution(double beta, double thI, double thR)
     {
+        double sin_minus_I = sin(-thI);
+        double sin_R = sin(thR);
+        double cos_minus_I = cos(-thI);
+        double cos_R = cos(thR);
 
         double v = beta * beta;
-        double cos_minus_I = sqrt(1 - sin_minus_I * sin_minus_I);
-        double cos_R = sqrt(1 - cos_R * cos_R);
 
         return (csch(1.0 / v) / (2.0 * v)) * exp((sin_minus_I * sin_R) / v) * I_0((cos_minus_I * cos_R) / v);
     }

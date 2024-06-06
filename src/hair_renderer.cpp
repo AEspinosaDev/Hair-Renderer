@@ -220,13 +220,19 @@ void HairRenderer::init()
     hairMaterial->set_texture("u_irradianceMap", irradianceTexture, 3);
 
 #ifndef EPIC
-    //Marschner M term
-    Texture *marschnerM = new Texture();
+    TextureConfig lutConfig{};
+    // lutConfig.format = GL_RGB;
+    // lutConfig.internalFormat = GL_RGB8;
+    // lutConfig.anisotropicFilter = true;
+    lutConfig.useMipmaps = true;
+
+    // Marschner M term
+    Texture *marschnerM = new Texture(lutConfig);
     loaders::load_image(marschnerM, "resources/images/m.png");
     marschnerM->generate();
     hairMaterial->set_texture("u_m", marschnerM, 4);
-    //Marschner N term
-    Texture *marschnerN = new Texture();
+    // Marschner N term
+    Texture *marschnerN = new Texture(lutConfig);
     loaders::load_image(marschnerN, "resources/images/n.png");
     marschnerN->generate();
     hairMaterial->set_texture("u_n", marschnerN, 5);
@@ -243,7 +249,7 @@ void HairRenderer::init()
         loadThread1.detach();
         m_head->set_rotation({180.0f, -90.0f, 0.0f});
         m_head->set_scale(0.98f);
-        std::thread loadThread2(hair_loaders::load_cy_hair, m_hair, "resources/models/curly.hair");
+        std::thread loadThread2(hair_loaders::load_cy_hair, m_hair, "resources/models/straight.hair");
         loadThread2.detach();
 
         // Low poly
