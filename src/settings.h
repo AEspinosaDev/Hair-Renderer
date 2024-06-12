@@ -30,7 +30,7 @@ struct HairSettings
     bool trt = true;
 
     bool scatter = true;
-    bool colorScatter = false;
+    bool colorScatter = true;
     float scatterExp = 500.0f;
 
     bool glints = true;

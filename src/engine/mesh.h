@@ -127,6 +127,7 @@ public:
     static Mesh *create_screen_quad();
 
     static Mesh *create_cube();
+    static Mesh *create_strand();
 };
 
 #pragma endregion

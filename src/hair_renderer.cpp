@@ -5,6 +5,7 @@
 // #define EPIC
 #define GLINT_EXTENT 16
 #define DEPTH_PREPASS
+#define TEST
 
 void HairRenderer::init()
 {
@@ -140,7 +141,11 @@ void HairRenderer::init()
 #ifdef EPIC
     hairPipeline.shader = new Shader("resources/shaders/strand-marschner-epic.glsl", ShaderType::LIT);
 #else
+#ifdef TEST
+    hairPipeline.shader = new Shader("resources/shaders/strand-marschner-pre-test.glsl", ShaderType::LIT);
+#else
     hairPipeline.shader = new Shader("resources/shaders/strand-marschner-pre.glsl", ShaderType::LIT);
+#endif
 #endif
 #else
     hairPipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
@@ -272,6 +277,13 @@ void HairRenderer::init()
     }
 #endif
 
+#ifdef TEST
+
+    m_hair = Mesh::create_strand();
+    m_hair->generate_buffers();
+    m_hair->set_material(hairMaterial);
+#endif
+
     // Generate noise texture
     noise_pass();
     m_noiseFBO->get_attachments().front().texture->generate_mipmaps();
@@ -310,7 +322,8 @@ void HairRenderer::draw()
     GlobalUniforms globu;
     globu.ambient = {m_globalSettings.ambientColor,
                      m_globalSettings.ambientStrength};
-    glm::vec3 lightViewSpace = camu.v * glm::vec4(m_light.light->get_position(), 1.0f); // Transform to view space
+    // glm::vec3 lightViewSpace = camu.v * glm::vec4(m_light.light->get_position(), 1.0f); // Transform to view space
+    glm::vec3 lightViewSpace = m_light.light->get_position(); 
     globu.lightPos = {lightViewSpace, 1.0f};
     globu.lightColor = {m_light.light->get_color(), m_light.light->get_intensity()};
     ShadowConfig shadow = m_light.light->get_shadow_config();
@@ -395,7 +408,11 @@ void HairRenderer::forward_pass()
     // hairu.vec3Types["u_camPos"] = m_camera->get_position();
     m_hair->get_material()->set_uniforms(hairu);
 
+#ifdef TEST
+    m_hair->draw(true);
+#else
     m_hair->draw(true, GL_LINES);
+#endif
 
     MaterialUniforms dummyu;
     m_light.dummy->set_position(m_light.light->get_position());

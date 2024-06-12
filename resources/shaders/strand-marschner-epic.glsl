@@ -224,7 +224,7 @@ float NR(vec3 wi, vec3 wo, float cosPhi){
   float cosHalfPhi = sqrt(0.5+0.5*cosPhi);
 
   // return (0.25*cosHalfPhi)*fresnelSchlick(u_hair.ior,sqrt(0.5*(1+dot(wi,wo)))); //Frostbite
-  return (0.25*cosHalfPhi)*fresnelSchlick(u_hair.ior,sqrt(0.5+0.5*dot(wi,wo))); //Epic
+  return (0.25*cosHalfPhi)*fresnelSchlick(u_hair.ior,sqrt(0.5+0.5*dot(wi,wo))) ; //Epic
 }
 //Attenuattion
 vec3 A(float f, int p, vec3 t){ //fresnel, Stage, Absorbtion
@@ -267,7 +267,7 @@ vec3 NTRT(float sinThetaD, float cosThetaD, float cosPhi){
 //Longitudinal TERM
   float M(float sinTheta, float roughness){
   // return exp(-(sinTheta*sinTheta)/(2*roughness*roughness))/sqrt(2*PI*roughness); //Frostbite 
-  return 1.0/(roughness*sqrt(2*PI))*exp((-sinTheta*sinTheta)/(2.0*roughness*roughness)); //Epic. sintheta = sinThetaWi+sinThetaV-alpha
+  return (1.0/(roughness*sqrt(2*PI)))*exp((-sinTheta*sinTheta)/(2.0*roughness*roughness)); //Epic. sintheta = sinThetaWi+sinThetaV-alpha
 }
 
 //Real-time Marschnerr
@@ -301,13 +301,12 @@ vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bo
   float cosThetaD = cos(thetaD);
   float sinThetaD = sin(thetaD);
 
-  float R = r ? M(sinThetaWi+sinThetaV-shift*2.0, betaR )*NR(wi,v,cosPhiD): 0.0; 
+  float R = r ? M(sinThetaWi+sinThetaV-shift*2.0, betaR )*NR(wi,v,cosPhiD)/0.25: 0.0; 
   vec3 TT = tt ? M(sinThetaWi+sinThetaV+shift,betaTT)*NTT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
   vec3 TRT = trt ? M(sinThetaWi+sinThetaV+shift*4.0,betaTRT)*NTRT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
 
-
   vec3 albedo = u_hair.baseColor;
-  vec3 specular = (R*u_hair.specular+TT+TRT*u_hair.specular);
+  vec3 specular = (R*u_hair.specular+TT+TRT*(u_hair.specular*2.0))/max(0.2,cosThetaD*cosThetaD);;
 
   return (specular+albedo) * radiance;
   
@@ -365,18 +364,12 @@ float getLuminance(vec3 li){
   return 0.2126*li.r + 0.7152*li.g+0.0722*li.b;
 }
 
-vec3 multipleScattering(){
+vec3 multipleScattering(vec3 n){
   
    vec3 l = normalize(u_scene.lightPos.xyz- g_pos);  //Light vector
-  // vec3 r = normalize(-g_pos);       
-  // vec3 u = normalize(g_dir); 
-
-   vec3 n1 = cross(g_modelDir, cross(u_camera.position, g_modelDir));
-    vec3 n2 = normalize(g_modelPos-u_BVCenter);
-    vec3 fn = mix(n1,n2,0.5);
   
-  // vec3 n = normalize(r - u * dot(u,r));
-   float wrapLight = (dot(fn,l)+1.0)/(4.0*PI);
+  
+  float wrapLight = (dot(n,l)+1.0)/(4.0*PI);
   vec3 scattering = sqrt(u_hair.baseColor) * wrapLight * pow(u_hair.baseColor/getLuminance(u_scene.lightColor),vec3(scatterWeight));
   return scattering;
 
@@ -431,32 +424,22 @@ vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
     return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }  
 
-vec3 computeAmbient(){
-    //Square Enix Method
-
-    //Should be world space. 2 fake normals
-    vec3 n1 = cross(g_modelDir, cross(u_camera.position, g_modelDir));
-    vec3 n2 = normalize(g_modelPos-u_BVCenter);
-    vec3 fn = n2;
-
+vec3 computeAmbient(vec3 n){
+   
     vec3 ambient;
     if(u_useSkybox){
+      
+        vec3 irradiance = texture(u_irradianceMap, n).rgb*u_scene.ambientIntensity;
 
-        // vec3 specularity = fresnelSchlickRoughness(max(dot(fn, u_camera.position), 0.0), vec3(0.04),u_hair.roughness);
-        // vec3 kD = vec3(1.0)  - specularity;
-        // kD *= 1.0 - 0.0;	
-        vec3 irradiance = texture(u_irradianceMap, fn).rgb*u_scene.ambientIntensity;
-        //  irradiance = irradiance / (irradiance + vec3(1.0));
-        // const float GAMMA = 2.2;
-        // irradiance = pow(irradiance, vec3(1.0 / GAMMA));
-        // vec3 diffuse    = irradiance * u_hair.baseColor;
-        // ambient = diffuse *kD ;
+        ambient = computeLighting(u_hair.roughness+0.2,u_hair.shift,irradiance, 
+        u_hair.r,
+        false,
+        u_hair.trt);
 
-        ambient = computeLighting(u_hair.roughness+0.2,u_hair.shift,irradiance, u_hair.r,
-      false,
-      u_hair.trt);
     }else{
+
        ambient = (u_scene.ambientIntensity  * u_scene.ambientColor) *  u_hair.baseColor ;
+
     }
   // ambient = fn;
   return ambient;
@@ -478,14 +461,18 @@ void main() {
       u_hair.tt,
       u_hair.trt);
 
+    vec3 n1 = cross(g_modelDir, cross(u_camera.position, g_modelDir));
+    vec3 n2 = normalize(g_modelPos-u_BVCenter);
+    vec3 fakeNormal = mix(n1,n2,0.5);
+
     if(u_scene.castShadow==1.0){
         color*= 1.0 - computeShadow();
         if(u_hair.useScatter && u_hair.coloredScatter)
-            color+= multipleScattering();
+            color+= multipleScattering(n2);
     }
 
     //Ambient component
-    vec3 ambient = computeAmbient();
+    vec3 ambient = computeAmbient(fakeNormal);
 
     color+=ambient;
 
@@ -493,6 +480,7 @@ void main() {
       float occ = unsharpSSAO();
       color-=vec3(occ);
     }
+
   // color = color / (color + vec3(1.0));
   //   const float GAMMA = 2.2;
   //   color = pow(color, vec3(1.0 / GAMMA));
