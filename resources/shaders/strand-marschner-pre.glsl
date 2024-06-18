@@ -222,9 +222,10 @@ float linearizeDepth(float depth, float near, float far) {
 vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bool trt){
 
   //--->>>View space
-  // vec3 wi = normalize(u_scene.lightPos.xyz- g_pos);    //Light vector
-  vec3 wi = normalize(g_pos - u_scene.lightPos.xyz);    //Light vector
+  vec3 wi = normalize(u_scene.lightPos.xyz- g_pos);    //Light vector
+  // vec3 wi = normalize(g_pos - u_scene.lightPos.xyz);    //Light vector
   vec3 n  = g_normal;                                  //Strand shading normal
+  // vec3 v  = normalize(inverse(u_camera.modelView)[3].xyz-g_pos);                         //Camera vector
   vec3 v  = normalize(u_camera.position-g_pos);                         //Camera vector
   vec3 u  = normalize(g_dir);                          //Strand tangent/direction
 
@@ -236,9 +237,9 @@ vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bo
   //Theta & Phi
   float sin_thI = dot(u,wi);
   float sin_thR  = dot(u,v);
-  vec3 wiPerp    = wi - sin_thI * u;
-  vec3 vPerp     = v - sin_thR * u;
-  float cos_phiD = dot(vPerp,wiPerp)*inversesqrt(dot(wiPerp,wiPerp)*dot(vPerp,vPerp));
+  vec3 wiPerp    = normalize(wi - sin_thI * u);
+  vec3 vPerp     = normalize(v - sin_thR * u);
+  float cos_phiD = dot(vPerp,wiPerp)*inversesqrt(dot(vPerp,vPerp)*dot(wiPerp,wiPerp));
   float cos_thD    = cos((asin(sin_thI)-asin(sin_thR))/2.0);
 
   //LUTs
@@ -254,14 +255,13 @@ vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bo
 
   float R   = r ?   mM.r * mN.r : 0.0; 
   float TT  = tt ?  mM.g * mN.g : 0.0; 
-  float TRT = trt ? mM.b * mN.b: 0.0; 
+  float TRT = trt ? mM.b * mN.b : 0.0; 
 
-  vec3 absColor = u_hair.baseColor;
 
   vec3 specular = vec3((R+TT+TRT)/max(0.2,cos_thD*cos_thD));
   specular*= radiance;
 
-  vec3 diffuse  = u_hair.baseColor;
+  // vec3 diffuse  = u_hair.baseColor;
 
   // return (specular+diffuse) * radiance;
   return specular;

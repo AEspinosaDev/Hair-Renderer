@@ -85,12 +85,11 @@ namespace math
     // First kind bessel
     double I_0(double x)
     {
-       
 
         double sum = 0.0;
         for (int i = 0; i <= 10; i++)
         {
-            double numerator = pow(x, 2*i);
+            double numerator = pow(x, 2 * i);
             double denominator = pow(4, i) * pow(factorial(i), 2);
             sum += numerator / denominator;
         }
@@ -167,6 +166,7 @@ namespace math
                       fresnel_parallel(etaParallel, angle));
     }
 
+
     // Clamp function for double values - common shader function
     double clamp(double x, double min, double max)
     {
@@ -175,6 +175,13 @@ namespace math
         if (x > max)
             return max;
         return x;
+    }
+    
+    // Approx Schlick's Fresnel - https://en.wikipedia.org/wiki/Schlick%27s_approximation
+    double fresnelSchlick(double out_eta, double in_eta, double cosTheta)
+    {
+        double F0 = ((out_eta- in_eta) * (out_eta- in_eta)) / ((out_eta + in_eta) * (out_eta + in_eta));
+        return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
     }
 
     // Saturate function - common shader function

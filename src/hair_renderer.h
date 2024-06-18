@@ -18,6 +18,7 @@
 
 #include "settings.h"
 #include "hair_loaders.h"
+#include "smaaAux.h"
 
 USING_NAMESPACE_GLIB
 
@@ -94,6 +95,18 @@ private:
     Framebuffer *m_fxaaFBO;
     Framebuffer *m_depthFBO;
 
+    struct SMAAResources{
+        Framebuffer* edgeFBO{nullptr};
+        Framebuffer* blendFBO{nullptr};
+        Texture* areaTex{nullptr};
+        Texture* searchTex{nullptr};
+        GraphicPipeline edgePipeline{};
+        GraphicPipeline blendPipeline{};
+        GraphicPipeline resolvePipeline{};
+    };
+
+    SMAAResources m_smaaRes{}; 
+
     //--- Settings ---
 
     GlobalSettings m_globalSettings{};
@@ -119,6 +132,8 @@ private:
     void shadow_pass();
 
     void postprocess_pass();
+
+    void smaa_pass();
 
     void noise_pass();
 

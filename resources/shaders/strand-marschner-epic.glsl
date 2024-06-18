@@ -166,7 +166,9 @@ layout (binding = 1) uniform Scene
 // ---Hair--
 struct HairMaterial{
     vec3 baseColor;
-    float specular;
+    float Rpower;
+    float TTpower;
+    float TRTpower;
     float roughness;
     float scatter;
     float shift;
@@ -251,12 +253,9 @@ vec3 NTT(float sinThetaD, float cosThetaD, float cosPhi){
 }
 // Azimuthal DOUBLE REFLECTION
 vec3 NTRT(float sinThetaD, float cosThetaD, float cosPhi){
-  // float _ior = sqrt(u_hair.ior*u_hair.ior - sinThetaD* sinThetaD)/ cosThetaD; //Original
-// float gamma = asin(h/_ior);
-  //  vec3 T = exp(-2*u_hair.baseColor*(1+cos(2*gamma)));
-  // float scale = clamp(1.5*(1-2.0*u_hair.roughness),0.0,1.0); //Frostbite scale term
-
   float h = sqrt(3.0)*0.5; //Por que si
+
+
   float D = exp(17.0*cosPhi-16.78); //Intensity distribution
    vec3 T = pow(u_hair.baseColor,vec3(0.8/cosThetaD));
   float F = fresnelSchlick(u_hair.ior,acos(cosThetaD*sqrt(1-h*h))); //Fresnel CONSTANT ?
@@ -306,11 +305,11 @@ vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bo
   vec3 TRT = trt ? M(sinThetaWi+sinThetaV+shift*4.0,betaTRT)*NTRT(sinThetaD,cosThetaD,cosPhiD): vec3(0.0); 
 
   vec3 albedo = u_hair.baseColor;
-  vec3 specular = (R*u_hair.specular+TT+TRT*(u_hair.specular*2.0))/max(0.2,cosThetaD*cosThetaD);;
+  vec3 specular = (R*u_hair.Rpower+TT*u_hair.TTpower+TRT*u_hair.TRTpower)/max(0.2,cosThetaD*cosThetaD);;
 
   return (specular+albedo) * radiance;
   
-  // return specular/(cosThetaD*cosThetaD)  *radiance;
+  // return Rpower/(cosThetaD*cosThetaD)  *radiance;
 
 }
 

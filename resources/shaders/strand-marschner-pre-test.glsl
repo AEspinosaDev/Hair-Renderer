@@ -30,6 +30,7 @@ void main() {
     gl_Position =  u_camera.viewProj * u_model * vec4(position, 1.0);
 
     v_dir = normalize(mat3(transpose(inverse(u_model))) * tangent);
+    v_dir = tangent;
     v_color = color;
     v_id = gl_VertexID;
     v_pos = (u_model * vec4(position, 1.0)).xyz;
@@ -138,9 +139,10 @@ float linearizeDepth(float depth, float near, float far) {
 vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bool trt){
 
   //--->>>View space
-  // vec3 wi = normalize(u_scene.lightPos.xyz- g_pos);    //Light vector
-  vec3 wi = normalize(v_pos - u_scene.lightPos.xyz);    //Light vector
+  vec3 wi = normalize(u_scene.lightPos.xyz- v_pos);    //Light vector
+//   vec3 wi = normalize(vec3(0.0,0.0,-10.0)-v_pos);    //Light vectoSr
   // vec3 n  = g_normal;                                  //Strand shading normal
+//   vec3 v  = normalize(vec3(2.0,2.0,-10.0)-v_pos);                         //Camera vector
   vec3 v  = normalize(u_camera.position-v_pos);                         //Camera vector
   vec3 u  = normalize(v_dir);                          //Strand tangent/direction
 
@@ -156,12 +158,12 @@ vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bo
   //LUTs
   //Marschner M
   vec2 uvM = vec2(sin_thI,sin_thR)*0.5+0.5;
-  uvM.y = 1-uvM.y;
+  uvM.y = 1.0-uvM.y;
   vec4 mM  = texture(u_m,uvM).rgba; 
   // float cos_thD = mM.a; 
   //Marschner N
   vec2 uvN = vec2(cos_phiD,cos_thD)*0.5+0.5;
-  uvN.y = 1-uvN.y;
+  uvN.y = 1.0-uvN.y;
   vec4 mN  = texture(u_n,uvN).rgba;
 
   float R   = r ?   mM.r * mN.r : 0.0; 
@@ -170,7 +172,7 @@ vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bo
 
   vec3 absColor = u_hair.baseColor;
 
-  vec3 specular = vec3((R+TT+TRT)/max(0.2,cos_thD*cos_thD));
+  vec3 specular = vec3((R+TT+TRT)/max(0.0,cos_thD*cos_thD));
   specular*= radiance;
 
   vec3 diffuse  = u_hair.baseColor;

@@ -20,7 +20,9 @@ struct HairSettings
         68.0f / 255.0f,
         37.0f / 255.0f,
         10.0f / 255.0f);
-    float specular = 5.0f;
+    float Rpower = 5.0f;
+    float TTpower = 1.0f;
+    float TRTpower = 15.0f;
     float roughness = 0.4f;
     float shift = 0.12f; // In radians (-5º to -10º) => 0.088 to 0.17 //Not with epic 0.02 does fine
     float ior = 1.55f;
@@ -33,7 +35,7 @@ struct HairSettings
     bool colorScatter = true;
     float scatterExp = 500.0f;
 
-    bool glints = true;
+    bool glints = false;
 
     bool occlusion = false;
 #else
@@ -44,6 +46,8 @@ struct HairSettings
     float specPower1 = 210.0f;
     float specPower2 = 8.0f;
 #endif
+
+    // float cosTheta
 };
 struct HeadSettings
 {

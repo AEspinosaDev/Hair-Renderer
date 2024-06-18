@@ -2,10 +2,11 @@
 
 #define YUKSEL
 // #define FXAA
+#define SMAA
 // #define EPIC
 #define GLINT_EXTENT 16
 #define DEPTH_PREPASS
-#define TEST
+// #define TEST
 
 void HairRenderer::init()
 {
@@ -58,24 +59,7 @@ void HairRenderer::init()
 
     // Creating multisampled forward pass buffer
 
-#ifndef FXAA
-    TextureConfig masaaColorConfig{};
-    masaaColorConfig.type = TextureType::TEXTURE_2D_MULTISAMPLE;
-    masaaColorConfig.format = GL_RGBA;
-    masaaColorConfig.internalFormat = GL_RGBA16;
-    masaaColorConfig.dataType = GL_UNSIGNED_BYTE;
-
-    Attachment msaaColorAttachment{};
-    msaaColorAttachment.texture = new Texture(m_window.extent, masaaColorConfig);
-    msaaColorAttachment.attachmentType = GL_COLOR_ATTACHMENT0;
-    Attachment msaaDepthAttachment{};
-    msaaDepthAttachment.isRenderbuffer = true;
-    msaaDepthAttachment.renderbuffer = new Renderbuffer(GL_DEPTH24_STENCIL8);
-    msaaDepthAttachment.attachmentType = GL_DEPTH_STENCIL_ATTACHMENT;
-
-    m_forwardFBO = new Framebuffer(m_window.extent, {msaaColorAttachment, msaaDepthAttachment}, m_globalSettings.samples);
-    m_forwardFBO->generate();
-#else
+#if defined(SMAA) || defined(FXAA)
     TextureConfig colorConfig{};
     colorConfig.type = TextureType::TEXTURE_2D;
     colorConfig.format = GL_RGBA;
@@ -93,6 +77,102 @@ void HairRenderer::init()
 
     m_forwardFBO = new Framebuffer(m_window.extent, {colorAttachment, depthAttachment});
     m_forwardFBO->generate();
+
+#else
+    TextureConfig masaaColorConfig{};
+    masaaColorConfig.type = TextureType::TEXTURE_2D_MULTISAMPLE;
+    masaaColorConfig.format = GL_RGBA;
+    masaaColorConfig.internalFormat = GL_RGBA16;
+    masaaColorConfig.dataType = GL_UNSIGNED_BYTE;
+
+    Attachment msaaColorAttachment{};
+    msaaColorAttachment.texture = new Texture(m_window.extent, masaaColorConfig);
+    msaaColorAttachment.attachmentType = GL_COLOR_ATTACHMENT0;
+    Attachment msaaDepthAttachment{};
+    msaaDepthAttachment.isRenderbuffer = true;
+    msaaDepthAttachment.renderbuffer = new Renderbuffer(GL_DEPTH24_STENCIL8);
+    msaaDepthAttachment.attachmentType = GL_DEPTH_STENCIL_ATTACHMENT;
+
+    m_forwardFBO = new Framebuffer(m_window.extent, {msaaColorAttachment, msaaDepthAttachment}, m_globalSettings.samples);
+    m_forwardFBO->generate();
+#endif
+
+#ifdef SMAA
+    TextureConfig edgeConfig{};
+    edgeConfig.format = GL_RGBA;
+    edgeConfig.internalFormat = GL_RGBA16;
+    edgeConfig.dataType = GL_UNSIGNED_BYTE;
+    edgeConfig.useMipmaps = false;
+    edgeConfig.wrapR = GL_CLAMP_TO_EDGE;
+    edgeConfig.wrapS = GL_CLAMP_TO_EDGE;
+    edgeConfig.wrapT = GL_CLAMP_TO_EDGE;
+
+    Attachment edgeAttachment{};
+    edgeAttachment.texture = new Texture(m_window.extent, edgeConfig);
+    edgeAttachment.attachmentType = GL_COLOR_ATTACHMENT0;
+    Attachment edgeDepthAttachment{};
+    edgeDepthAttachment.isRenderbuffer = true;
+    edgeDepthAttachment.renderbuffer = new Renderbuffer(GL_DEPTH24_STENCIL8);
+    edgeDepthAttachment.attachmentType = GL_DEPTH_STENCIL_ATTACHMENT;
+
+    m_smaaRes.edgeFBO = new Framebuffer(m_window.extent, {edgeAttachment, edgeDepthAttachment});
+    m_smaaRes.edgeFBO->generate();
+
+    TextureConfig blendConfig{};
+    blendConfig.format = GL_RGBA;
+    blendConfig.internalFormat = GL_RGBA16;
+    blendConfig.dataType = GL_UNSIGNED_BYTE;
+    blendConfig.useMipmaps = false;
+    blendConfig.wrapR = GL_CLAMP_TO_EDGE;
+    blendConfig.wrapS = GL_CLAMP_TO_EDGE;
+    blendConfig.wrapT = GL_CLAMP_TO_EDGE;
+
+    Attachment blendAttachment{};
+    blendAttachment.texture = new Texture(m_window.extent, blendConfig);
+    blendAttachment.attachmentType = GL_COLOR_ATTACHMENT0;
+    Attachment blendDepthAttachment{};
+    blendDepthAttachment.isRenderbuffer = true;
+    blendDepthAttachment.renderbuffer = new Renderbuffer(GL_DEPTH24_STENCIL8);
+    blendDepthAttachment.attachmentType = GL_DEPTH_STENCIL_ATTACHMENT;
+
+    m_smaaRes.blendFBO = new Framebuffer(m_window.extent, {blendAttachment, blendDepthAttachment});
+    m_smaaRes.blendFBO->generate();
+
+    // AUXILIAR TEXS
+
+    TextureConfig searchConfig{};
+    searchConfig.format = GL_RED;
+    searchConfig.internalFormat = GL_R8;
+    searchConfig.wrapR = GL_CLAMP_TO_BORDER;
+    searchConfig.wrapS = GL_CLAMP_TO_BORDER;
+    searchConfig.wrapT = GL_CLAMP_TO_BORDER;
+    searchConfig.freeImageCacheOnGenerate = false;
+
+    m_smaaRes.searchTex = new Texture({SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT}, searchConfig);
+    Image searchImg{};
+    searchImg.data = searchTexBytes;
+    searchImg.channels = 1;
+    searchImg.extent = {SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT};
+    m_smaaRes.searchTex->set_image(searchImg);
+
+    TextureConfig areaConfig{};
+    areaConfig.format = GL_RG;
+    areaConfig.internalFormat = GL_RG8;
+    areaConfig.wrapR = GL_CLAMP_TO_BORDER;
+    areaConfig.wrapS = GL_CLAMP_TO_BORDER;
+    areaConfig.wrapT = GL_CLAMP_TO_BORDER;
+    areaConfig.freeImageCacheOnGenerate = false;
+
+    m_smaaRes.areaTex = new Texture({AREATEX_WIDTH, AREATEX_HEIGHT}, areaConfig);
+    Image areaImg{};
+    areaImg.data = areaTexBytes;
+    areaImg.channels = 2;
+    areaImg.extent = {AREATEX_WIDTH, AREATEX_HEIGHT};
+    m_smaaRes.areaTex->set_image(areaImg);
+
+    m_smaaRes.searchTex->generate();
+    m_smaaRes.areaTex->generate();
+
 #endif
 
     TextureConfig depthConfig{};
@@ -175,6 +255,12 @@ void HairRenderer::init()
     m_fxaaPipeline.shader->unbind();
 #endif
 
+#ifdef SMAA
+    m_smaaRes.edgePipeline.shader = new Shader("resources/shaders/smaa-edge-detection.glsl", ShaderType::OTHER);
+    m_smaaRes.blendPipeline.shader = new Shader("resources/shaders/smaa-blending-weight.glsl", ShaderType::OTHER);
+    m_smaaRes.resolvePipeline.shader = new Shader("resources/shaders/smaa-neighbour-blending.glsl", ShaderType::OTHER);
+#endif
+
     GraphicPipeline skyboxPipeline{};
     skyboxPipeline.shader = new Shader("resources/shaders/skybox.glsl", ShaderType::OTHER);
     skyboxPipeline.state.depthFunction = DepthFuncType::LEQUAL;
@@ -229,7 +315,10 @@ void HairRenderer::init()
     // lutConfig.format = GL_RGB;
     // lutConfig.internalFormat = GL_RGB8;
     // lutConfig.anisotropicFilter = true;
-    lutConfig.useMipmaps = true;
+    lutConfig.useMipmaps = false;
+    lutConfig.wrapR = GL_CLAMP_TO_BORDER;
+    lutConfig.wrapS = GL_CLAMP_TO_BORDER;
+    lutConfig.wrapT = GL_CLAMP_TO_BORDER;
 
     // Marschner M term
     Texture *marschnerM = new Texture(lutConfig);
@@ -238,7 +327,7 @@ void HairRenderer::init()
     hairMaterial->set_texture("u_m", marschnerM, 4);
     // Marschner N term
     Texture *marschnerN = new Texture(lutConfig);
-    loaders::load_image(marschnerN, "resources/images/n.png");
+    loaders::load_image(marschnerN, "resources/images/sqn.png");
     marschnerN->generate();
     hairMaterial->set_texture("u_n", marschnerN, 5);
 #endif
@@ -323,7 +412,7 @@ void HairRenderer::draw()
     globu.ambient = {m_globalSettings.ambientColor,
                      m_globalSettings.ambientStrength};
     // glm::vec3 lightViewSpace = camu.v * glm::vec4(m_light.light->get_position(), 1.0f); // Transform to view space
-    glm::vec3 lightViewSpace = m_light.light->get_position(); 
+    glm::vec3 lightViewSpace = m_light.light->get_position();
     globu.lightPos = {lightViewSpace, 1.0f};
     globu.lightColor = {m_light.light->get_color(), m_light.light->get_intensity()};
     ShadowConfig shadow = m_light.light->get_shadow_config();
@@ -353,9 +442,6 @@ void HairRenderer::draw()
 #pragma region FORWARD PASS
 void HairRenderer::forward_pass()
 {
-    // glPushDebugGroupKHR(GL_DEBUG_SOURCE_APPLICATION, 0, -1, "Begin Section");
-
-    // glPopDebugGroupKHR();
 
     m_forwardFBO->bind();
 
@@ -372,12 +458,16 @@ void HairRenderer::forward_pass()
     headu.boolTypes["u_useSkybox"] = m_globalSettings.useSkyboxIrradiance;
     m_head->get_material()->set_uniforms(headu);
 
+#ifndef TEST
     m_head->draw();
+#endif
 
     MaterialUniforms hairu;
 #ifdef MARSCHNER
     hairu.vec3Types["u_hair.baseColor"] = m_hairSettings.baseColor;
-    hairu.floatTypes["u_hair.specular"] = m_hairSettings.specular;
+    hairu.floatTypes["u_hair.Rpower"] = m_hairSettings.Rpower;
+    hairu.floatTypes["u_hair.TTpower"] = m_hairSettings.TTpower;
+    hairu.floatTypes["u_hair.TRTpower"] = m_hairSettings.TRTpower;
     hairu.floatTypes["u_hair.roughness"] = m_hairSettings.roughness;
     hairu.floatTypes["u_hair.scatter"] = m_hairSettings.scatterExp;
     hairu.floatTypes["u_hair.shift"] = m_hairSettings.shift;
@@ -435,7 +525,7 @@ void HairRenderer::forward_pass()
     skyu.mat4Types["u_model"] = m_skybox->get_model_matrix();
     m_skybox->get_material()->set_uniforms(skyu);
 
-    m_skybox->draw();
+    // m_skybox->draw();
 }
 #pragma endregion
 #pragma region DEPTH PRE PASS
@@ -508,8 +598,14 @@ void HairRenderer::noise_pass()
 void HairRenderer::postprocess_pass()
 {
 #ifndef FXAA
-    Framebuffer::blit(m_forwardFBO, nullptr, GL_COLOR_BUFFER_BIT, GL_NEAREST, m_window.extent, m_window.extent);
+#ifdef SMAA
+    smaa_pass();
+    // Framebuffer::blit(m_forwardFBO, nullptr, GL_COLOR_BUFFER_BIT, GL_NEAREST, m_window.extent, m_window.extent);
 #else
+    Framebuffer::blit(m_forwardFBO, nullptr, GL_COLOR_BUFFER_BIT, GL_NEAREST, m_window.extent, m_window.extent);
+#endif
+#else
+
     Framebuffer::bind_default();
 
     m_fxaaPipeline.shader->bind();
@@ -520,6 +616,48 @@ void HairRenderer::postprocess_pass()
 
     m_fxaaPipeline.shader->unbind();
 #endif
+}
+
+void HairRenderer::smaa_pass()
+{
+    // 1º Edge Detection pass
+
+    m_smaaRes.edgeFBO->bind();
+    Framebuffer::clear_color_depth_bit();
+
+    m_smaaRes.edgePipeline.shader->bind();
+    m_smaaRes.edgePipeline.shader->set_vec2("u_screen", glm::vec2(m_window.extent.width, m_window.extent.height));
+    m_forwardFBO->get_attachments().front().texture->bind();
+    m_vignette->draw(false);
+    m_smaaRes.edgePipeline.shader->unbind();
+
+    // 2º Blending Weight pass
+    m_smaaRes.blendFBO->bind();
+    Framebuffer::clear_color_depth_bit();
+
+    m_smaaRes.blendPipeline.shader->bind();
+    m_smaaRes.blendPipeline.shader->set_vec2("u_screen", glm::vec2(m_window.extent.width, m_window.extent.height));
+    m_smaaRes.edgeFBO->get_attachments().front().texture->bind();
+    m_smaaRes.areaTex->bind(1);
+    m_smaaRes.searchTex->bind(2);
+    m_smaaRes.blendPipeline.shader->set_int("u_edgeTex", 0);
+    m_smaaRes.blendPipeline.shader->set_int("u_areaTex", 1);
+    m_smaaRes.blendPipeline.shader->set_int("u_searchTex", 2);
+    m_vignette->draw(false);
+    m_smaaRes.blendPipeline.shader->unbind();
+
+    // 3º Neighbour Blending pass
+    Framebuffer::bind_default();
+    Framebuffer::clear_color_depth_bit();
+
+    m_smaaRes.resolvePipeline.shader->bind();
+    m_smaaRes.resolvePipeline.shader->set_vec2("u_screen", glm::vec2(m_window.extent.width, m_window.extent.height));
+    m_forwardFBO->get_attachments().front().texture->bind();
+    m_smaaRes.blendFBO->get_attachments().front().texture->bind(1);
+    m_smaaRes.resolvePipeline.shader->set_int("u_colorTex", 0);
+    m_smaaRes.resolvePipeline.shader->set_int("u_blendTex", 1);
+    m_vignette->draw(false);
+    m_smaaRes.resolvePipeline.shader->unbind();
 }
 
 #pragma endregion
@@ -549,7 +687,9 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::DragFloat("Strand thickness", &m_hairSettings.thickness, 0.001f, 0.001f, 0.05f);
 #ifdef MARSCHNER
     ImGui::ColorEdit3("Base color", (float *)&m_hairSettings.baseColor);
-    ImGui::DragFloat("Specular", &m_hairSettings.specular, .05f, 0.0f, 30.0f);
+    ImGui::DragFloat("R Scale", &m_hairSettings.Rpower, .05f, 0.0f, 30.0f);
+    ImGui::DragFloat("TT Scale", &m_hairSettings.TTpower, .05f, 0.0f, 30.0f);
+    ImGui::DragFloat("TRT Scale", &m_hairSettings.TRTpower, .05f, 0.0f, 30.0f);
     ImGui::DragFloat("Roughness", &m_hairSettings.roughness, .05f, 0.0f, 1.0f);
     ImGui::DragFloat("Shift", &m_hairSettings.shift, -0.05f, 2 * M_PI, M_PI_2);
     ImGui::DragFloat("IOR", &m_hairSettings.ior, 0.01f, 0.0f, 10.0f);
