@@ -14,7 +14,7 @@ uniform vec2 u_screen;
 
 //-----------------------------------------------------------------------------
 // SMAA Presets
-#define SMAA_PRESET_HIGH;
+#define SMAA_PRESET_ULTRA;
 
 #if defined(SMAA_PRESET_LOW)
 #define SMAA_THRESHOLD 0.15
@@ -89,6 +89,7 @@ out vec4 outColor;
 //-----------------------------------------------------------------------------
 // SMAA Presets
 
+#define SMAA_PRESET_ULTRA;
 
 #if defined(SMAA_PRESET_LOW)
 #define SMAA_THRESHOLD 0.15

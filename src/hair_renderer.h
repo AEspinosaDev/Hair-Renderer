@@ -164,13 +164,8 @@ private:
         if (!user_interface_wants_to_handle_input())
             m_controller->handle_mouse(w, x, y);
     }
-    void resize_callback(GLFWwindow *w, int width, int height)
-    {
-        m_camera->set_projection(width, height);
-        resize({width, height});
-        m_forwardFBO->resize({width, height});
-        m_depthFBO->resize({width,height});
-    }
+    void resize_callback(GLFWwindow *w, int width, int height);
+    
 
 #pragma endregion
 

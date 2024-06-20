@@ -3,7 +3,7 @@
 #define YUKSEL
 // #define FXAA
 #define SMAA
-// #define EPIC
+#define EPIC
 #define GLINT_EXTENT 16
 #define DEPTH_PREPASS
 // #define TEST
@@ -154,6 +154,7 @@ void HairRenderer::init()
     searchImg.channels = 1;
     searchImg.extent = {SEARCHTEX_WIDTH, SEARCHTEX_HEIGHT};
     m_smaaRes.searchTex->set_image(searchImg);
+    // loaders::load_image(m_smaaRes.searchTex, "resources/images/SearchTexOGL.png");
 
     TextureConfig areaConfig{};
     areaConfig.format = GL_RG;
@@ -169,6 +170,7 @@ void HairRenderer::init()
     areaImg.channels = 2;
     areaImg.extent = {AREATEX_WIDTH, AREATEX_HEIGHT};
     m_smaaRes.areaTex->set_image(areaImg);
+    // loaders::load_image(m_smaaRes.areaTex, "resources/images/AreaTexOGL.png");
 
     m_smaaRes.searchTex->generate();
     m_smaaRes.areaTex->generate();
@@ -525,7 +527,7 @@ void HairRenderer::forward_pass()
     skyu.mat4Types["u_model"] = m_skybox->get_model_matrix();
     m_skybox->get_material()->set_uniforms(skyu);
 
-    // m_skybox->draw();
+    m_skybox->draw();
 }
 #pragma endregion
 #pragma region DEPTH PRE PASS
@@ -624,6 +626,7 @@ void HairRenderer::smaa_pass()
 
     m_smaaRes.edgeFBO->bind();
     Framebuffer::clear_color_depth_bit();
+    set_clear_color(glm::vec4(0.0f));
 
     m_smaaRes.edgePipeline.shader->bind();
     m_smaaRes.edgePipeline.shader->set_vec2("u_screen", glm::vec2(m_window.extent.width, m_window.extent.height));
@@ -634,6 +637,7 @@ void HairRenderer::smaa_pass()
     // 2º Blending Weight pass
     m_smaaRes.blendFBO->bind();
     Framebuffer::clear_color_depth_bit();
+    set_clear_color(glm::vec4(0.0f));
 
     m_smaaRes.blendPipeline.shader->bind();
     m_smaaRes.blendPipeline.shader->set_vec2("u_screen", glm::vec2(m_window.extent.width, m_window.extent.height));
@@ -649,6 +653,7 @@ void HairRenderer::smaa_pass()
     // 3º Neighbour Blending pass
     Framebuffer::bind_default();
     Framebuffer::clear_color_depth_bit();
+    set_clear_color(glm::vec4(0.0f));
 
     m_smaaRes.resolvePipeline.shader->bind();
     m_smaaRes.resolvePipeline.shader->set_vec2("u_screen", glm::vec2(m_window.extent.width, m_window.extent.height));
@@ -740,4 +745,17 @@ void HairRenderer::setup_window_callbacks()
                              { static_cast<HairRenderer *>(glfwGetWindowUserPointer(w))->mouse_callback(w, x, y); });
     glfwSetFramebufferSizeCallback(m_window.ptr, [](GLFWwindow *w, int width, int height)
                                    { static_cast<HairRenderer *>(glfwGetWindowUserPointer(w))->resize_callback(w, width, height); });
+}
+
+void HairRenderer::resize_callback(GLFWwindow *w, int width, int height)
+{
+    m_camera->set_projection(width, height);
+    resize({width, height});
+    m_forwardFBO->resize({width, height});
+    m_depthFBO->resize({width, height});
+
+#ifdef SMAA
+    m_smaaRes.blendFBO->resize({width, height});
+    m_smaaRes.edgeFBO->resize({width, height});
+#endif
 }

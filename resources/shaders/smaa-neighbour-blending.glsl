@@ -52,7 +52,7 @@ out vec4 outColor;
 
 //-----------------------------------------------------------------------------
 // SMAA Presets
-
+#define SMAA_PRESET_ULTRA;
 
 #if defined(SMAA_PRESET_LOW)
 #define SMAA_THRESHOLD 0.15
@@ -703,6 +703,18 @@ void SMAADetectVerticalCornerPattern(SMAATexture2D(edgesTex), inout vec2 weights
 
 //-----------------------------------------------------------------------------
 // Neighborhood Blending Pixel Shader (Third Pass)
+
+
+float3 linearToSRGB(float3 linear) 
+{
+    float3 srgb = mix(12.92*linear, 1.055*pow(linear,float3(1.0/2.4))-0.055,step(0.0031308,linear));
+    return srgb;
+}
+float4 linearToSRGBA(float4 linear) 
+{
+    float3 srgb = linearToSRGB(linear.rgb);
+    return float4(srgb,linear.a);
+}
 
 float4 SMAANeighborhoodBlendingPS(float2 texcoord,
                                   float4 offset,

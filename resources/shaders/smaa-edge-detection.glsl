@@ -49,7 +49,7 @@ out vec4 outEdge;
 
 //-----------------------------------------------------------------------------
 // SMAA Presets
-
+#define SMAA_PRESET_ULTRA;
 
 #if defined(SMAA_PRESET_LOW)
 #define SMAA_THRESHOLD 0.15
