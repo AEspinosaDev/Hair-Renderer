@@ -1,9 +1,21 @@
 #include "hair_renderer.h"
 
+//----------------------------------------------
+// Hair model type
 #define YUKSEL
+
+//----------------------------------------------
+// Antialiasing implementation defines
 // #define FXAA
 #define SMAA
+#define SMAAx2
+
+//----------------------------------------------
+// Shading algorithms setup
 #define EPIC
+
+//----------------------------------------------
+// Misc defines
 #define GLINT_EXTENT 16
 #define DEPTH_PREPASS
 // #define TEST
@@ -61,7 +73,11 @@ void HairRenderer::init()
 
 #if defined(SMAA) || defined(FXAA)
     TextureConfig colorConfig{};
+#ifdef SMAAx2
+    colorConfig.type = TextureType::TEXTURE_2D_MULTISAMPLE;
+#else
     colorConfig.type = TextureType::TEXTURE_2D;
+#endif
     colorConfig.format = GL_RGBA;
     colorConfig.internalFormat = GL_RGBA16;
     colorConfig.dataType = GL_UNSIGNED_BYTE;
@@ -75,7 +91,11 @@ void HairRenderer::init()
     depthAttachment.renderbuffer = new Renderbuffer(GL_DEPTH24_STENCIL8);
     depthAttachment.attachmentType = GL_DEPTH_STENCIL_ATTACHMENT;
 
+#ifdef SMAAx2
+    m_forwardFBO = new Framebuffer(m_window.extent, {colorAttachment, depthAttachment}, 2);
+#else
     m_forwardFBO = new Framebuffer(m_window.extent, {colorAttachment, depthAttachment});
+#endif
     m_forwardFBO->generate();
 
 #else
@@ -98,6 +118,25 @@ void HairRenderer::init()
 #endif
 
 #ifdef SMAA
+#ifdef SMAAx2
+    TextureConfig separateConfig{};
+    separateConfig.format = GL_RGBA;
+    separateConfig.internalFormat = GL_RGBA16;
+    separateConfig.dataType = GL_UNSIGNED_BYTE;
+    separateConfig.useMipmaps = false;
+    separateConfig.wrapR = GL_CLAMP_TO_EDGE;
+    separateConfig.wrapS = GL_CLAMP_TO_EDGE;
+    separateConfig.wrapT = GL_CLAMP_TO_EDGE;
+
+    Attachment separateAttachment{};
+    separateAttachment.texture = new Texture(m_window.extent, separateConfig);
+    separateAttachment.attachmentType = GL_COLOR_ATTACHMENT0;
+
+    m_smaaRes.separateFBO = new Framebuffer(m_window.extent, {separateAttachment});
+    m_smaaRes.separateFBO->generate();
+
+#endif
+
     TextureConfig edgeConfig{};
     edgeConfig.format = GL_RGBA;
     edgeConfig.internalFormat = GL_RGBA16;
@@ -110,12 +149,23 @@ void HairRenderer::init()
     Attachment edgeAttachment{};
     edgeAttachment.texture = new Texture(m_window.extent, edgeConfig);
     edgeAttachment.attachmentType = GL_COLOR_ATTACHMENT0;
+#ifdef SMAAx2
+    Attachment edgeAttachment1{};
+    edgeAttachment1.texture = new Texture(m_window.extent, edgeConfig);
+    edgeAttachment1.attachmentType = GL_COLOR_ATTACHMENT1;
+#endif
+
     Attachment edgeDepthAttachment{};
     edgeDepthAttachment.isRenderbuffer = true;
     edgeDepthAttachment.renderbuffer = new Renderbuffer(GL_DEPTH24_STENCIL8);
     edgeDepthAttachment.attachmentType = GL_DEPTH_STENCIL_ATTACHMENT;
 
+#ifdef SMAAx2
+    m_smaaRes.edgeFBO = new Framebuffer(m_window.extent, {edgeAttachment, edgeAttachment1, edgeDepthAttachment});
+#else
     m_smaaRes.edgeFBO = new Framebuffer(m_window.extent, {edgeAttachment, edgeDepthAttachment});
+
+#endif
     m_smaaRes.edgeFBO->generate();
 
     TextureConfig blendConfig{};
@@ -130,12 +180,22 @@ void HairRenderer::init()
     Attachment blendAttachment{};
     blendAttachment.texture = new Texture(m_window.extent, blendConfig);
     blendAttachment.attachmentType = GL_COLOR_ATTACHMENT0;
+#ifdef SMAAx2
+    Attachment blendAttachment1{};
+    blendAttachment1.texture = new Texture(m_window.extent, blendConfig);
+    blendAttachment1.attachmentType = GL_COLOR_ATTACHMENT1;
+#endif
+
     Attachment blendDepthAttachment{};
     blendDepthAttachment.isRenderbuffer = true;
     blendDepthAttachment.renderbuffer = new Renderbuffer(GL_DEPTH24_STENCIL8);
     blendDepthAttachment.attachmentType = GL_DEPTH_STENCIL_ATTACHMENT;
 
+#ifdef SMAAx2
+    m_smaaRes.blendFBO = new Framebuffer(m_window.extent, {blendAttachment, blendAttachment1, blendDepthAttachment});
+#else
     m_smaaRes.blendFBO = new Framebuffer(m_window.extent, {blendAttachment, blendDepthAttachment});
+#endif
     m_smaaRes.blendFBO->generate();
 
     // AUXILIAR TEXS
@@ -258,9 +318,9 @@ void HairRenderer::init()
 #endif
 
 #ifdef SMAA
-    m_smaaRes.edgePipeline.shader = new Shader("resources/shaders/smaa-edge-detection.glsl", ShaderType::OTHER);
-    m_smaaRes.blendPipeline.shader = new Shader("resources/shaders/smaa-blending-weight.glsl", ShaderType::OTHER);
-    m_smaaRes.resolvePipeline.shader = new Shader("resources/shaders/smaa-neighbour-blending.glsl", ShaderType::OTHER);
+    m_smaaRes.edgePipeline.shader = new Shader("resources/shaders/smaa/edge-detection.glsl", ShaderType::OTHER);
+    m_smaaRes.blendPipeline.shader = new Shader("resources/shaders/smaa/blending-weight.glsl", ShaderType::OTHER);
+    m_smaaRes.resolvePipeline.shader = new Shader("resources/shaders/smaa/neighbour-blending.glsl", ShaderType::OTHER);
 #endif
 
     GraphicPipeline skyboxPipeline{};
@@ -413,8 +473,8 @@ void HairRenderer::draw()
     GlobalUniforms globu;
     globu.ambient = {m_globalSettings.ambientColor,
                      m_globalSettings.ambientStrength};
-    // glm::vec3 lightViewSpace = camu.v * glm::vec4(m_light.light->get_position(), 1.0f); // Transform to view space
-    glm::vec3 lightViewSpace = m_light.light->get_position();
+    glm::vec3 lightViewSpace = camu.v * glm::vec4(m_light.light->get_position(), 1.0f); // Transform to view space
+    // glm::vec3 lightViewSpace = m_light.light->get_position();
     globu.lightPos = {lightViewSpace, 1.0f};
     globu.lightColor = {m_light.light->get_color(), m_light.light->get_intensity()};
     ShadowConfig shadow = m_light.light->get_shadow_config();
@@ -602,7 +662,6 @@ void HairRenderer::postprocess_pass()
 #ifndef FXAA
 #ifdef SMAA
     smaa_pass();
-    // Framebuffer::blit(m_forwardFBO, nullptr, GL_COLOR_BUFFER_BIT, GL_NEAREST, m_window.extent, m_window.extent);
 #else
     Framebuffer::blit(m_forwardFBO, nullptr, GL_COLOR_BUFFER_BIT, GL_NEAREST, m_window.extent, m_window.extent);
 #endif
@@ -757,5 +816,8 @@ void HairRenderer::resize_callback(GLFWwindow *w, int width, int height)
 #ifdef SMAA
     m_smaaRes.blendFBO->resize({width, height});
     m_smaaRes.edgeFBO->resize({width, height});
+#ifdef SMAAx2
+    m_smaaRes.separateFBO->resize({width, height});
+#endif
 #endif
 }

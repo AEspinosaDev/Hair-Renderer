@@ -327,6 +327,8 @@ SamplerState PointSampler { Filter = MIN_MAG_MIP_POINT; AddressU = Clamp; Addres
 #if defined(SMAA_GLSL_4)
 #define mad(a, b, c) fma(a, b, c)
 #define SMAAGather(tex, coord) textureGather(tex, coord)
+#define SMAATexture2DMS2(tex) sampler2DMS tex
+#define SMAALoad(tex, pos, sample) texelFetch(tex, pos, sample)
 #else
 #define mad(a, b, c) (a * b + c)
 #endif

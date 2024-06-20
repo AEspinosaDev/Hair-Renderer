@@ -98,11 +98,13 @@ private:
     struct SMAAResources{
         Framebuffer* edgeFBO{nullptr};
         Framebuffer* blendFBO{nullptr};
+        Framebuffer* separateFBO{nullptr};
         Texture* areaTex{nullptr};
         Texture* searchTex{nullptr};
         GraphicPipeline edgePipeline{};
         GraphicPipeline blendPipeline{};
         GraphicPipeline resolvePipeline{};
+        GraphicPipeline separatePipeline{};
     };
 
     SMAAResources m_smaaRes{}; 

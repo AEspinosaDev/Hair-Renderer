@@ -89,6 +89,8 @@ out vec4 outColor;
 //-----------------------------------------------------------------------------
 // SMAA Presets
 
+
+
 #define SMAA_PRESET_ULTRA;
 
 #if defined(SMAA_PRESET_LOW)
