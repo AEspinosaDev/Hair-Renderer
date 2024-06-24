@@ -39,13 +39,28 @@ void main() {
 #stage fragment
 #version 460
 
+#define SMAAx2
+
 in vec2 v_uv;
 in vec4 v_offset;
 in vec4 v_rt_metrics;
 
+#ifdef SMAAx2
+
+uniform sampler2D u_blendTex0;
+uniform sampler2D u_colorTex0;
+
+uniform sampler2D u_blendTex1;
+uniform sampler2D u_colorTex1;
+
+#else
 
 uniform sampler2D u_colorTex;
 uniform sampler2D u_blendTex;
+
+#endif
+
+
 
 out vec4 outColor;
 
@@ -782,6 +797,26 @@ float4 SMAANeighborhoodBlendingPS(float2 texcoord,
 
 void main() {
 
+
+#ifdef SMAAx2
+    vec4 color0 = SMAANeighborhoodBlendingPS(v_uv,
+                                  v_offset,
+                                  u_colorTex0,
+                                  u_blendTex0
+                                  #if SMAA_REPROJECTION
+                                  , SMAATexture2D(velocityTex)
+                                  #endif
+                                  ); 
+    vec4 color1 = SMAANeighborhoodBlendingPS(v_uv,
+                                  v_offset,
+                                  u_colorTex1,
+                                  u_blendTex1
+                                  #if SMAA_REPROJECTION
+                                  , SMAATexture2D(velocityTex)
+                                  #endif
+                                  ); 
+    outColor = mix(color0,color1,0.5);                              
+#else
     outColor = SMAANeighborhoodBlendingPS(v_uv,
                                   v_offset,
                                   u_colorTex,
@@ -790,5 +825,6 @@ void main() {
                                   , SMAATexture2D(velocityTex)
                                   #endif
                                   ); 
+#endif
 }
 

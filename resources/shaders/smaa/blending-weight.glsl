@@ -75,16 +75,31 @@ void main() {
 #stage fragment
 #version 460
 
+#define SMAAx2
+
 in vec2 v_uv;
 in vec4 v_offsets[3];
 in vec4 v_rt_metrics;
 in vec2 v_pixcoord;
 
-uniform sampler2D u_edgeTex;
 uniform sampler2D u_areaTex;
 uniform sampler2D u_searchTex;
 
+
+#ifdef SMAAx2
+
+uniform sampler2D u_edgeTex0;
+uniform sampler2D u_edgeTex1;
+
+layout(location = 0) out vec4 outColor0;
+layout(location = 1) out vec4 outColor1;
+#else
+
+uniform sampler2D u_edgeTex;
+
 out vec4 outColor;
+
+#endif
 
 //-----------------------------------------------------------------------------
 // SMAA Presets
@@ -853,6 +868,24 @@ float4 SMAABlendingWeightCalculationPS(float2 texcoord,
 
 void main() {
 
+#ifdef SMAAx2
+    outColor0 = SMAABlendingWeightCalculationPS(
+        v_uv,
+        v_pixcoord, 
+        v_offsets, 
+        u_edgeTex0, 
+        u_areaTex,
+        u_searchTex,
+        float4(1,1,1,0));
+    outColor1 = SMAABlendingWeightCalculationPS(
+        v_uv,
+        v_pixcoord, 
+        v_offsets, 
+        u_edgeTex1, 
+        u_areaTex,
+        u_searchTex,
+        float4(2,2,2,0));
+#else
     outColor = SMAABlendingWeightCalculationPS(
         v_uv,
         v_pixcoord, 
@@ -861,5 +894,7 @@ void main() {
         u_areaTex,
         u_searchTex,
         float4(0.0));
+#endif
+
 }
 

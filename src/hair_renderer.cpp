@@ -128,11 +128,15 @@ void HairRenderer::init()
     separateConfig.wrapS = GL_CLAMP_TO_EDGE;
     separateConfig.wrapT = GL_CLAMP_TO_EDGE;
 
-    Attachment separateAttachment{};
-    separateAttachment.texture = new Texture(m_window.extent, separateConfig);
-    separateAttachment.attachmentType = GL_COLOR_ATTACHMENT0;
+    Attachment separateAttachment0{};
+    separateAttachment0.texture = new Texture(m_window.extent, separateConfig);
+    separateAttachment0.attachmentType = GL_COLOR_ATTACHMENT0;
 
-    m_smaaRes.separateFBO = new Framebuffer(m_window.extent, {separateAttachment});
+    Attachment separateAttachment1{};
+    separateAttachment1.texture = new Texture(m_window.extent, separateConfig);
+    separateAttachment1.attachmentType = GL_COLOR_ATTACHMENT1;
+
+    m_smaaRes.separateFBO = new Framebuffer(m_window.extent, {separateAttachment0, separateAttachment1});
     m_smaaRes.separateFBO->generate();
 
 #endif
@@ -321,6 +325,9 @@ void HairRenderer::init()
     m_smaaRes.edgePipeline.shader = new Shader("resources/shaders/smaa/edge-detection.glsl", ShaderType::OTHER);
     m_smaaRes.blendPipeline.shader = new Shader("resources/shaders/smaa/blending-weight.glsl", ShaderType::OTHER);
     m_smaaRes.resolvePipeline.shader = new Shader("resources/shaders/smaa/neighbour-blending.glsl", ShaderType::OTHER);
+#ifdef SMAAx2
+    m_smaaRes.separatePipeline.shader = new Shader("resources/shaders/smaa/separate.glsl", ShaderType::OTHER);
+#endif
 #endif
 
     GraphicPipeline skyboxPipeline{};
@@ -681,6 +688,17 @@ void HairRenderer::postprocess_pass()
 
 void HairRenderer::smaa_pass()
 {
+#ifdef SMAAx2
+    m_smaaRes.separateFBO->bind();
+    Framebuffer::clear_color_depth_bit();
+    set_clear_color(glm::vec4(0.0f));
+
+    m_smaaRes.separatePipeline.shader->bind();
+    m_forwardFBO->get_attachments().front().texture->bind();
+    m_vignette->draw(false);
+    m_smaaRes.separatePipeline.shader->unbind();
+#endif
+
     // 1º Edge Detection pass
 
     m_smaaRes.edgeFBO->bind();
@@ -689,7 +707,14 @@ void HairRenderer::smaa_pass()
 
     m_smaaRes.edgePipeline.shader->bind();
     m_smaaRes.edgePipeline.shader->set_vec2("u_screen", glm::vec2(m_window.extent.width, m_window.extent.height));
+#ifdef SMAAx2
+    m_smaaRes.separateFBO->get_attachments().front().texture->bind();
+    m_smaaRes.separatePipeline.shader->set_int("u_frame0", 0);
+    m_smaaRes.separateFBO->get_attachments()[1].texture->bind(1);
+    m_smaaRes.separatePipeline.shader->set_int("u_frame1", 1);
+#else
     m_forwardFBO->get_attachments().front().texture->bind();
+#endif
     m_vignette->draw(false);
     m_smaaRes.edgePipeline.shader->unbind();
 
@@ -700,12 +725,21 @@ void HairRenderer::smaa_pass()
 
     m_smaaRes.blendPipeline.shader->bind();
     m_smaaRes.blendPipeline.shader->set_vec2("u_screen", glm::vec2(m_window.extent.width, m_window.extent.height));
-    m_smaaRes.edgeFBO->get_attachments().front().texture->bind();
-    m_smaaRes.areaTex->bind(1);
-    m_smaaRes.searchTex->bind(2);
-    m_smaaRes.blendPipeline.shader->set_int("u_edgeTex", 0);
-    m_smaaRes.blendPipeline.shader->set_int("u_areaTex", 1);
-    m_smaaRes.blendPipeline.shader->set_int("u_searchTex", 2);
+    m_smaaRes.areaTex->bind(0);
+    m_smaaRes.searchTex->bind(1);
+    m_smaaRes.blendPipeline.shader->set_int("u_areaTex", 0);
+    m_smaaRes.blendPipeline.shader->set_int("u_searchTex", 1);
+#ifdef SMAAx2
+    m_smaaRes.edgeFBO->get_attachments().front().texture->bind(2);
+    m_smaaRes.blendPipeline.shader->set_int("u_edgeTex0", 2);
+    m_smaaRes.edgeFBO->get_attachments()[1].texture->bind(3);
+    m_smaaRes.blendPipeline.shader->set_int("u_edgeTex1", 3);
+#else
+    m_smaaRes.edgeFBO->get_attachments().front().texture->bind(2);
+    m_forwardFBO->get_attachments().front().texture->bind();
+    m_smaaRes.blendPipeline.shader->set_int("u_edgeTex", 2);
+#endif
+
     m_vignette->draw(false);
     m_smaaRes.blendPipeline.shader->unbind();
 
@@ -716,10 +750,21 @@ void HairRenderer::smaa_pass()
 
     m_smaaRes.resolvePipeline.shader->bind();
     m_smaaRes.resolvePipeline.shader->set_vec2("u_screen", glm::vec2(m_window.extent.width, m_window.extent.height));
+#ifdef SMAAx2
+    m_smaaRes.separateFBO->get_attachments().front().texture->bind();
+    m_smaaRes.blendFBO->get_attachments().front().texture->bind(1);
+    m_smaaRes.resolvePipeline.shader->set_int("u_colorTex0", 0);
+    m_smaaRes.resolvePipeline.shader->set_int("u_blendTex1", 1);
+    m_smaaRes.separateFBO->get_attachments()[1].texture->bind(2);
+    m_smaaRes.blendFBO->get_attachments()[1].texture->bind(3);
+    m_smaaRes.resolvePipeline.shader->set_int("u_colorTex1", 2);
+    m_smaaRes.resolvePipeline.shader->set_int("u_blendTex1", 3);
+#else
     m_forwardFBO->get_attachments().front().texture->bind();
     m_smaaRes.blendFBO->get_attachments().front().texture->bind(1);
     m_smaaRes.resolvePipeline.shader->set_int("u_colorTex", 0);
     m_smaaRes.resolvePipeline.shader->set_int("u_blendTex", 1);
+#endif
     m_vignette->draw(false);
     m_smaaRes.resolvePipeline.shader->unbind();
 }

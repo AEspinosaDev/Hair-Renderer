@@ -39,13 +39,28 @@ void main() {
 #stage fragment
 #version 460
 
+#define SMAAx2
+
 in vec2 v_uv;
 in vec4 v_offsets[3];
 in vec4 v_rt_metrics;
 
+
+#ifdef SMAAx2
+
+uniform sampler2D u_frame0;
+uniform sampler2D u_frame1;
+
+layout(location = 0) out vec4 outEdge0;
+layout(location = 1) out vec4 outEdge1;
+
+#else
+
 uniform sampler2D u_frame;
 
 out vec4 outEdge;
+
+#endif
 
 //-----------------------------------------------------------------------------
 // SMAA Presets
@@ -775,6 +790,13 @@ void SMAADetectVerticalCornerPattern(SMAATexture2D(edgesTex), inout vec2 weights
 
 void main() {
 
+#ifdef SMAAx2
+    outEdge0 = vec4(SMAALumaEdgeDetectionPS(v_uv,v_offsets,u_frame0),0.0,1.0);
+    outEdge1 = vec4(SMAALumaEdgeDetectionPS(v_uv,v_offsets,u_frame1),0.0,1.0);
+#else
     outEdge = vec4(SMAALumaEdgeDetectionPS(v_uv,v_offsets,u_frame),0.0,1.0);
+#endif
+
+
 }
 
