@@ -2,8 +2,8 @@
 
 
 <p align="center">
-  <img src="https://github.com/AEspinosaDev/Hair-Renderer/assets/79087129/b8f44d8a-cf6f-4426-b8b6-9e4a65d983b5" alt="image" width="33%"/>
-  <img src="https://github.com/AEspinosaDev/Hair-Renderer/assets/79087129/96100dbb-3559-4087-8421-d34319a61143" alt="image" width="33%"/>
-   <img src="https://github.com/AEspinosaDev/Hair-Renderer/assets/79087129/63ab0e26-308a-411a-aa70-879d6dd7cf4a" alt="image" width="33%"/>
-
+  <img src="https://github.com/user-attachments/assets/848ab219-682b-4ceb-bac1-57c84408ae82" alt="image" width="100%"/>
+  <img src="https://github.com/user-attachments/assets/8a0234f3-bda9-4054-9649-1f12bb582a36" alt="image" width="100%"/>
+  <img src="https://github.com/user-attachments/assets/3824a884-040a-4e3c-ab07-df416730a498" alt="image" width="100%"/>
+  Last image is a comparison against a GT rendered in Mitsuba.
 </p>
