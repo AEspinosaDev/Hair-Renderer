@@ -110,10 +110,6 @@ public:
         glfwSwapInterval(op);
         m_settings.vSync = op;
     }
-    inline void set_clear_color(glm::vec4 color)
-    {
-        GL_CHECK(glClearColor(color.r, color.g, color.b, color.a));
-    }
 #pragma endregion
     /*
     Use as callback
@@ -126,6 +122,10 @@ public:
     inline virtual void resize_viewport(Extent2D extent, Position2D origin = {0, 0})
     {
         GL_CHECK(glViewport(origin.x, origin.y, extent.width, extent.height));
+    }
+    inline void set_clear_color(glm::vec4 color)
+    {
+        GL_CHECK(glClearColor(color.r, color.g, color.b, color.a));
     }
 
 #pragma region USER INTERFACE

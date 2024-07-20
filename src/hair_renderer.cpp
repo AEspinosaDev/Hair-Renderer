@@ -6,9 +6,9 @@
 
 //----------------------------------------------
 // Antialiasing implementation defines
-// #define FXAA
-#define SMAA
-#define SMAAx2
+#define FXAA
+// #define SMAA
+// #define SMAAx2
 
 //----------------------------------------------
 // Shading algorithms setup
@@ -19,15 +19,26 @@
 #define GLINT_EXTENT 16
 #define DEPTH_PREPASS
 // #define TEST
+#define VALIDATION
 
 void HairRenderer::init()
 {
 #pragma region INIT
     Renderer::init();
 
-    chdir("/home/tony/Dev/Hair-Renderer/");
+    // chdir("/home/tony/Dev/Hair-Renderer/");
 
+#ifdef VALIDATION
+    m_camera = new Camera(m_window.extent.width, m_window.extent.height, {0.0f, 0.0f, 15.0f},
+                          {0.0f, 2.0f, -15.0f},
+                          {0.0f, 1.0f, 0.0f});
+    m_camera->set_field_of_view(35);
+    m_camera->set_projection(m_window.extent.width, m_window.extent.height);
+#else
     m_camera = new Camera(m_window.extent.width, m_window.extent.height, {0.0f, 0.0f, -10.0f});
+    m_camera->set_field_of_view(36);
+    m_camera->set_projection(m_window.extent.width, m_window.extent.height);
+#endif
 
     m_controller = new Controller(m_camera);
 
@@ -38,14 +49,20 @@ void HairRenderer::init()
     m_head = new Mesh();
 
     m_floor = new Mesh();
-    loaders::load_OBJ(m_floor, "resources/models/plane.obj");
+    loaders::load_OBJ(m_floor, RES_PATH "models/plane.obj");
     m_floor->set_scale(50.0f);
     m_floor->set_position({0.0f, -4.0f, 0.0f});
 
     m_light.light = new PointLight();
     m_light.dummy = new Mesh();
-    loaders::load_OBJ(m_light.dummy, "resources/models/sphere.obj");
+    loaders::load_OBJ(m_light.dummy, RES_PATH "models/sphere.obj");
     m_light.set_position({6.0f, 3.0f, -6.0f});
+#ifdef VALIDATION
+    ShadowConfig shconf = m_light.light->get_shadow_config();
+    shconf.target = {0.0f, 0.0f, -15.0f};
+    m_light.light->set_shadow_config(shconf);
+    m_light.set_position({15.0f, 8.0f, -15.0f});
+#endif
 
 #pragma endregion
 #pragma region FRAMEBUFFERS
@@ -69,6 +86,7 @@ void HairRenderer::init()
     m_noiseFBO = new Framebuffer({GLINT_EXTENT, GLINT_EXTENT}, {noiseAttachment});
     m_noiseFBO->generate();
 
+    // Creating multisampled forward pass buffer
     // Creating multisampled forward pass buffer
 
 #if defined(SMAA) || defined(FXAA)
@@ -278,60 +296,56 @@ void HairRenderer::init()
     m_globalUBO->generate();
 
     GraphicPipeline litPipeline{};
-    litPipeline.shader = new Shader("resources/shaders/cook-torrance.glsl", ShaderType::LIT);
+    litPipeline.shader = new Shader(RES_PATH "shaders/cook-torrance.glsl", ShaderType::LIT);
     litPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
     litPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
 
     GraphicPipeline hairPipeline{};
 #ifdef MARSCHNER
 #ifdef EPIC
-    hairPipeline.shader = new Shader("resources/shaders/strand-marschner-epic.glsl", ShaderType::LIT);
+    hairPipeline.shader = new Shader(RES_PATH "shaders/strand-marschner-epic.glsl", ShaderType::LIT);
 #else
-#ifdef TEST
-    hairPipeline.shader = new Shader("resources/shaders/strand-marschner-pre-test.glsl", ShaderType::LIT);
-#else
-    hairPipeline.shader = new Shader("resources/shaders/strand-marschner-pre.glsl", ShaderType::LIT);
-#endif
+    hairPipeline.shader = new Shader(RES_PATH "shaders/strand-marschner-pre.glsl", ShaderType::LIT);
 #endif
 #else
-    hairPipeline.shader = new Shader("resources/shaders/strand-kajiya.glsl", ShaderType::LIT);
+    hairPipeline.shader = new Shader(RES_PATH "shaders/strand-kajiya.glsl", ShaderType::LIT);
 #endif
     hairPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
     hairPipeline.shader->set_uniform_block("Scene", UBOLayout::GLOBAL_LAYOUT);
 
     GraphicPipeline unlitPipeline{};
-    unlitPipeline.shader = new Shader("resources/shaders/unlit.glsl", ShaderType::UNLIT);
+    unlitPipeline.shader = new Shader(RES_PATH "shaders/unlit.glsl", ShaderType::UNLIT);
     unlitPipeline.shader->set_uniform_block("Camera", UBOLayout::CAMERA_LAYOUT);
     Material *lightMaterial = new Material(unlitPipeline);
     m_light.dummy->set_material(lightMaterial);
 
-    m_shadowPipeline.shader = new Shader("resources/shaders/shadow.glsl", ShaderType::OTHER);
+    m_shadowPipeline.shader = new Shader(RES_PATH "shaders/shadow.glsl", ShaderType::OTHER);
 
-    m_noisePipeline.shader = new Shader("resources/shaders/noise-gen.glsl", ShaderType::OTHER);
+    m_noisePipeline.shader = new Shader(RES_PATH "shaders/noise-gen.glsl", ShaderType::OTHER);
 
 #ifdef DEPTH_PREPASS
-    m_strandDepthPipeline.shader = new Shader("resources/shaders/strand-depth.glsl", ShaderType::OTHER);
-    m_depthPipeline.shader = new Shader("resources/shaders/depth.glsl", ShaderType::OTHER);
+    m_strandDepthPipeline.shader = new Shader(RES_PATH "shaders/strand-depth.glsl", ShaderType::OTHER);
+    m_depthPipeline.shader = new Shader(RES_PATH "shaders/depth.glsl", ShaderType::OTHER);
 #endif
 
 #ifdef FXAA
-    m_fxaaPipeline.shader = new Shader("resources/shaders/fxaa.glsl", ShaderType::OTHER);
+    m_fxaaPipeline.shader = new Shader(RES_PATH "shaders/fxaa.glsl", ShaderType::OTHER);
     m_fxaaPipeline.shader->bind();
     m_fxaaPipeline.shader->set_int("u_frame", 0);
     m_fxaaPipeline.shader->unbind();
 #endif
 
 #ifdef SMAA
-    m_smaaRes.edgePipeline.shader = new Shader("resources/shaders/smaa/edge-detection.glsl", ShaderType::OTHER);
-    m_smaaRes.blendPipeline.shader = new Shader("resources/shaders/smaa/blending-weight.glsl", ShaderType::OTHER);
-    m_smaaRes.resolvePipeline.shader = new Shader("resources/shaders/smaa/neighbour-blending.glsl", ShaderType::OTHER);
+    m_smaaRes.edgePipeline.shader = new Shader(RES_PATH "shaders/smaa/edge-detection.glsl", ShaderType::OTHER);
+    m_smaaRes.blendPipeline.shader = new Shader(RES_PATH "shaders/smaa/blending-weight.glsl", ShaderType::OTHER);
+    m_smaaRes.resolvePipeline.shader = new Shader(RES_PATH "shaders/smaa/neighbour-blending.glsl", ShaderType::OTHER);
 #ifdef SMAAx2
-    m_smaaRes.separatePipeline.shader = new Shader("resources/shaders/smaa/separate.glsl", ShaderType::OTHER);
+    m_smaaRes.separatePipeline.shader = new Shader(RES_PATH "shaders/smaa/separate.glsl", ShaderType::OTHER);
 #endif
 #endif
 
     GraphicPipeline skyboxPipeline{};
-    skyboxPipeline.shader = new Shader("resources/shaders/skybox.glsl", ShaderType::OTHER);
+    skyboxPipeline.shader = new Shader(RES_PATH "shaders/skybox.glsl", ShaderType::OTHER);
     skyboxPipeline.state.depthFunction = DepthFuncType::LEQUAL;
 
 #pragma endregion
@@ -340,9 +354,11 @@ void HairRenderer::init()
     Material *headMaterial = new Material(litPipeline);
     headMaterial->set_texture("u_shadowMap", m_shadowFBO->get_attachments().front().texture);
     Texture *skin = new Texture();
-    loaders::load_image(skin, "resources/images/head.png");
+    loaders::load_image(skin, RES_PATH "images/head.png");
     skin->generate();
+#ifndef VALIDATION
     headMaterial->set_texture("u_albedoMap", skin, 1);
+#endif
     // headMaterial->set_texture("u_depthMap", m_depthFBO->get_attachments().front().texture, 2);
     m_head->set_material(headMaterial);
 
@@ -369,7 +385,7 @@ void HairRenderer::init()
     skymapConfig.wrapR = GL_CLAMP_TO_EDGE;
 
     Texture *skymap = new Texture({2048, 2048}, skymapConfig);
-    loaders::load_image(skymap, "resources/images/room.hdr", true);
+    loaders::load_image(skymap, RES_PATH "images/room.hdr", true);
     skymap->generate();
     skyboxMaterial->set_texture("u_skymap", skymap);
 
@@ -384,19 +400,16 @@ void HairRenderer::init()
     // lutConfig.format = GL_RGB;
     // lutConfig.internalFormat = GL_RGB8;
     // lutConfig.anisotropicFilter = true;
-    lutConfig.useMipmaps = false;
-    lutConfig.wrapR = GL_CLAMP_TO_BORDER;
-    lutConfig.wrapS = GL_CLAMP_TO_BORDER;
-    lutConfig.wrapT = GL_CLAMP_TO_BORDER;
+    lutConfig.useMipmaps = true;
 
     // Marschner M term
     Texture *marschnerM = new Texture(lutConfig);
-    loaders::load_image(marschnerM, "resources/images/m.png");
+    loaders::load_image(marschnerM, RES_PATH "images/m.png");
     marschnerM->generate();
     hairMaterial->set_texture("u_m", marschnerM, 4);
     // Marschner N term
     Texture *marschnerN = new Texture(lutConfig);
-    loaders::load_image(marschnerN, "resources/images/sqn.png");
+    loaders::load_image(marschnerN, RES_PATH "images/n.png");
     marschnerN->generate();
     hairMaterial->set_texture("u_n", marschnerN, 5);
 #endif
@@ -408,11 +421,11 @@ void HairRenderer::init()
 #ifdef YUKSEL
     // CEM YUKSEL MODELS
     {
-        std::thread loadThread1(loaders::load_PLY, m_head, "resources/models/woman.ply", true, true, false);
+        std::thread loadThread1(loaders::load_PLY, m_head, RES_PATH "models/woman.ply", true, true, false);
         loadThread1.detach();
         m_head->set_rotation({180.0f, -90.0f, 0.0f});
         m_head->set_scale(0.98f);
-        std::thread loadThread2(hair_loaders::load_cy_hair, m_hair, "resources/models/straight.hair");
+        std::thread loadThread2(hair_loaders::load_cy_hair, m_hair, RES_PATH "models/straight.hair");
         loadThread2.detach();
 
         // Low poly
@@ -423,23 +436,26 @@ void HairRenderer::init()
         m_hair->set_scale(0.048f);
         m_hair->set_position({0.015f, 0.3f, 0.1f});
         m_hair->set_rotation({-90.0f, 0.0f, 90.7f});
+#ifdef VALIDATION
+        m_hair->set_scale(0.1f);
+        m_hair->set_position({0.0f, 0.0f, -15.0f});
+        m_hair->set_rotation({-90.0f, 0.0f, -90.0f});
+
+        m_head->set_scale(2.0f);
+        m_head->set_rotation({180.0f, 90.0f, 0.0f});
+        m_head->set_position({0.0f, 0.0f, -15.0f});
+
+#endif
     }
 #else
     // NEURAL HAIRCUT MODELS
     {
-        loaders::load_PLY(m_head, "resources/models/head_blender.ply", true, true, false);
-        std::thread loadThread1(hair_loaders::load_neural_hair, m_hair, "resources/models/2000000.ply", m_head, true, true, false);
+        loaders::load_PLY(m_head, RES_PATH "models/head_blender.ply", true, true, false);
+        std::thread loadThread1(hair_loaders::load_neural_hair, m_hair, RES_PATH "models/2000000.ply", m_head, true, true, false);
         loadThread1.detach();
         m_head->set_scale(3.0);
         m_hair->set_scale(3.0);
     }
-#endif
-
-#ifdef TEST
-
-    m_hair = Mesh::create_strand();
-    m_hair->generate_buffers();
-    m_hair->set_material(hairMaterial);
 #endif
 
     // Generate noise texture
@@ -453,6 +469,8 @@ void HairRenderer::update()
 {
     if (!user_interface_wants_to_handle_input())
         m_controller->handle_keyboard(m_window.ptr, 0, 0, m_time.delta);
+#ifndef VALIDATION
+
 
     if (m_light.animated)
     {
@@ -463,6 +481,7 @@ void HairRenderer::update()
         m_light.light->set_position({_x, m_light.light->get_position().y, _z});
         m_light.dummy->set_position(m_light.light->get_position());
     }
+#endif
 }
 
 void HairRenderer::draw()
@@ -481,7 +500,6 @@ void HairRenderer::draw()
     globu.ambient = {m_globalSettings.ambientColor,
                      m_globalSettings.ambientStrength};
     glm::vec3 lightViewSpace = camu.v * glm::vec4(m_light.light->get_position(), 1.0f); // Transform to view space
-    // glm::vec3 lightViewSpace = m_light.light->get_position();
     globu.lightPos = {lightViewSpace, 1.0f};
     globu.lightColor = {m_light.light->get_color(), m_light.light->get_intensity()};
     ShadowConfig shadow = m_light.light->get_shadow_config();
@@ -511,9 +529,14 @@ void HairRenderer::draw()
 #pragma region FORWARD PASS
 void HairRenderer::forward_pass()
 {
+    // glPushDebugGroupKHR(GL_DEBUG_SOURCE_APPLICATION, 0, -1, "Begin Section");
+
+    // glPopDebugGroupKHR();
 
     m_forwardFBO->bind();
-
+#ifdef VALIDATION
+    set_clear_color({0.4f, 0.4f, 0.4f, 1.0f});
+#endif
     Framebuffer::clear_color_depth_bit();
 
     resize_viewport(m_window.extent);
@@ -527,51 +550,48 @@ void HairRenderer::forward_pass()
     headu.boolTypes["u_useSkybox"] = m_globalSettings.useSkyboxIrradiance;
     m_head->get_material()->set_uniforms(headu);
 
-#ifndef TEST
     m_head->draw();
-#endif
 
-    MaterialUniforms hairu;
+    m_hair->get_material()->get_pipeline().shader->bind();
+    m_hair->get_material()->get_pipeline().shader->set_float("u_thickness", m_hairSettings.thickness);
 #ifdef MARSCHNER
-    hairu.vec3Types["u_hair.baseColor"] = m_hairSettings.baseColor;
-    hairu.floatTypes["u_hair.Rpower"] = m_hairSettings.Rpower;
-    hairu.floatTypes["u_hair.TTpower"] = m_hairSettings.TTpower;
-    hairu.floatTypes["u_hair.TRTpower"] = m_hairSettings.TRTpower;
-    hairu.floatTypes["u_hair.roughness"] = m_hairSettings.roughness;
-    hairu.floatTypes["u_hair.scatter"] = m_hairSettings.scatterExp;
-    hairu.floatTypes["u_hair.shift"] = m_hairSettings.shift;
-    hairu.floatTypes["u_hair.ior"] = m_hairSettings.ior;
-    hairu.boolTypes["u_hair.r"] = m_hairSettings.r;
-    hairu.boolTypes["u_hair.tt"] = m_hairSettings.tt;
-    hairu.boolTypes["u_hair.trt"] = m_hairSettings.trt;
-    hairu.boolTypes["u_hair.glints"] = m_hairSettings.glints;
-    hairu.boolTypes["u_hair.useScatter"] = m_hairSettings.scatter;
-    hairu.boolTypes["u_hair.coloredScatter"] = m_hairSettings.colorScatter;
-    hairu.boolTypes["u_hair.occlusion"] = m_hairSettings.occlusion;
-    hairu.boolTypes["u_useSkybox"] = m_globalSettings.useSkyboxIrradiance;
+    m_hair->get_material()->get_pipeline().shader->set_vec3("u_hair.baseColor", m_hairSettings.baseColor);
+    m_hair->get_material()->get_pipeline().shader->set_float("u_hair.Rpower", m_hairSettings.Rpower);
+    m_hair->get_material()->get_pipeline().shader->set_float("u_hair.TTpower", m_hairSettings.TTpower);
+    m_hair->get_material()->get_pipeline().shader->set_float("u_hair.TRTpower", m_hairSettings.TRTpower);
+    m_hair->get_material()->get_pipeline().shader->set_float("u_hair.roughness", glm::radians( m_hairSettings.roughness));
+    m_hair->get_material()->get_pipeline().shader->set_float("u_hair.scatter", m_hairSettings.scatterExp);
+    m_hair->get_material()->get_pipeline().shader->set_float("u_hair.shift", sinf(glm::radians( m_hairSettings.shift)));
+    m_hair->get_material()->get_pipeline().shader->set_float("u_hair.ior", m_hairSettings.ior);
+    m_hair->get_material()->get_pipeline().shader->set_bool("u_hair.r", m_hairSettings.r);
+    m_hair->get_material()->get_pipeline().shader->set_bool("u_hair.tt", m_hairSettings.tt);
+    m_hair->get_material()->get_pipeline().shader->set_bool("u_hair.trt", m_hairSettings.trt);
+    m_hair->get_material()->get_pipeline().shader->set_bool("u_hair.glints", m_hairSettings.glints);
+    m_hair->get_material()->get_pipeline().shader->set_bool("u_hair.useScatter", m_hairSettings.scatter);
+    m_hair->get_material()->get_pipeline().shader->set_bool("u_hair.coloredScatter", m_hairSettings.colorScatter);
+    m_hair->get_material()->get_pipeline().shader->set_bool("u_hair.occlusion", m_hairSettings.occlusion);
+    m_hair->get_material()->get_pipeline().shader->set_bool("u_useSkybox", m_globalSettings.useSkyboxIrradiance);
+#else
+    m_hair->get_material()->get_pipeline().shader->set_vec3("u_albedo", m_hairSettings.color);
+    m_hair->get_material()->get_pipeline().shader->set_vec3("u_spec1", m_hairSettings.specColor1);
+    m_hair->get_material()->get_pipeline().shader->set_float("u_specPwr1", m_hairSettings.specPower1);
+    m_hair->get_material()->get_pipeline().shader->set_vec3("u_spec2", m_hairSettings.specColor2);
+    m_hair->get_material()->get_pipeline().shader->set_float("u_specPwr2", m_hairSettings.specPower2);
+    m_hair->get_material()->get_pipeline().shader->set_float("u_r", m_hairSettings.Rpower);
+    m_hair->get_material()->get_pipeline().shader->set_float("u_trt", m_hairSettings.TRTpower);
 
+#endif
+    // hairu.floatTypes["u_thickness"] = m_hairSettings.thickness;
     glm::vec3 bvcenter = m_hair->get_bounding_volume() ? static_cast<Sphere *>(m_hair->get_bounding_volume())->center : glm::vec3(0.0);
-    hairu.vec3Types["u_BVCenter"] = glm::vec3(m_hair->get_model_matrix() * glm::vec4(bvcenter.x,
-                                                                                     bvcenter.y,
-                                                                                     bvcenter.z,
-                                                                                     1.0));
-#else
-    hairu.vec3Types["u_albedo"] = m_hairSettings.color;
-    hairu.vec3Types["u_spec1"] = m_hairSettings.specColor1;
-    hairu.floatTypes["u_specPwr1"] = m_hairSettings.specPower1;
-    hairu.vec3Types["u_spec2"] = m_hairSettings.specColor2;
-    hairu.floatTypes["u_specPwr2"] = m_hairSettings.specPower2;
-#endif
-    hairu.floatTypes["u_thickness"] = m_hairSettings.thickness;
-    hairu.mat4Types["u_model"] = m_hair->get_model_matrix();
-    // hairu.vec3Types["u_camPos"] = m_camera->get_position();
-    m_hair->get_material()->set_uniforms(hairu);
+    m_hair->get_material()->get_pipeline().shader->set_vec3("u_BVCenter", glm::vec3(m_hair->get_model_matrix() * glm::vec4(bvcenter.x,
+                                                                                                                           bvcenter.y,
+                                                                                                                           bvcenter.z,
+                                                                                                                           1.0)));
+    m_hair->get_material()->get_pipeline().shader->set_mat4("u_model", m_hair->get_model_matrix());
+    m_hair->get_material()->get_pipeline().shader->set_vec3("u_camPos", m_camera->get_position());
+    m_hair->get_material()->get_pipeline().shader->unbind();
 
-#ifdef TEST
-    m_hair->draw(true);
-#else
     m_hair->draw(true, GL_LINES);
-#endif
 
     MaterialUniforms dummyu;
     m_light.dummy->set_position(m_light.light->get_position());
@@ -586,6 +606,7 @@ void HairRenderer::forward_pass()
     // flooru.mat4Types["u_model"] = m_floor->get_model_matrix();
     // flooru.vec3Types["u_albedo"] = glm::vec3(1.0);
     // m_floor->get_material()->set_uniforms(flooru);
+
     // m_floor->draw();
 
     m_skybox->set_rotation({0.0, m_globalSettings.enviromentRotation, 0.0});
@@ -594,6 +615,8 @@ void HairRenderer::forward_pass()
     skyu.mat4Types["u_model"] = m_skybox->get_model_matrix();
     m_skybox->get_material()->set_uniforms(skyu);
 
+#ifndef VALIDATION
+#endif
     m_skybox->draw();
 }
 #pragma endregion
@@ -789,7 +812,6 @@ void HairRenderer::setup_user_interface_frame()
     {
         set_v_sync(m_settings.vSync);
     }
-    ImGui::DragFloat("Camera Exposure", &m_globalSettings.exposure);
     ImGui::Separator();
     ImGui::SeparatorText("Hair Settings");
     gui::draw_transform_widget(m_hair);
@@ -799,22 +821,22 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::DragFloat("R Scale", &m_hairSettings.Rpower, .05f, 0.0f, 30.0f);
     ImGui::DragFloat("TT Scale", &m_hairSettings.TTpower, .05f, 0.0f, 30.0f);
     ImGui::DragFloat("TRT Scale", &m_hairSettings.TRTpower, .05f, 0.0f, 30.0f);
-    ImGui::DragFloat("Roughness", &m_hairSettings.roughness, .05f, 0.0f, 1.0f);
-    ImGui::DragFloat("Shift", &m_hairSettings.shift, -0.05f, 2 * M_PI, M_PI_2);
+    ImGui::DragFloat("Roughness", &m_hairSettings.roughness, .5f, 0.0f, 20.0f);
+    ImGui::DragFloat("Shift", &m_hairSettings.shift, 0.1f, 0.0F, 5.0F);
     ImGui::DragFloat("IOR", &m_hairSettings.ior, 0.01f, 0.0f, 10.0f);
     ImGui::Checkbox("Glints", &m_hairSettings.glints);
-    ImGui::Separator();
-    ImGui::Checkbox("Scattering", &m_hairSettings.scatter);
-    ImGui::Checkbox("Color absortion", &m_hairSettings.colorScatter);
+    ImGui::Checkbox("Use scatter", &m_hairSettings.scatter);
+    ImGui::Checkbox("Use absorption", &m_hairSettings.colorScatter);
     ImGui::DragFloat("Scatter Sigma", &m_hairSettings.scatterExp, 1.f, 0.0f, 1000.0f);
-    ImGui::Separator();
+    ImGui::Spacing();
     ImGui::Checkbox("R Lobe", &m_hairSettings.r);
     ImGui::Checkbox("TT Lobe", &m_hairSettings.tt);
     ImGui::Checkbox("TRT Lobe", &m_hairSettings.trt);
-    ImGui::Separator();
     ImGui::Checkbox("Occlusion", &m_hairSettings.occlusion);
 #else
     ImGui::ColorEdit3("Base color", (float *)&m_hairSettings.color);
+    ImGui::DragFloat("R Scale", &m_hairSettings.Rpower, .05f, 0.0f, 30.0f);
+    ImGui::DragFloat("TRT Scale", &m_hairSettings.TRTpower, .05f, 0.0f, 30.0f);
     ImGui::DragFloat("Specular 1 power", &m_hairSettings.specPower1, 1.0f, 0.0f, 240.0f);
     ImGui::DragFloat("Specular 2 power", &m_hairSettings.specPower2, 1.0f, 0.0f, 240.0f);
 #endif
@@ -826,9 +848,9 @@ void HairRenderer::setup_user_interface_frame()
     ImGui::Separator();
     ImGui::SeparatorText("Lighting Settings");
     ImGui::ColorEdit3("Clear color", (float *)&m_globalSettings.ambientColor);
-    ImGui::Checkbox("Use skybox as ambient light", &m_globalSettings.useSkyboxIrradiance);
     ImGui::DragFloat("Enviroment rotation", &m_globalSettings.enviromentRotation, 1.0f, -180.0f, 180.0f);
     ImGui::DragFloat("Enviroment intensity", &m_globalSettings.ambientStrength, 0.1f, 0.0f, 10.0f);
+    ImGui::Checkbox("Use skybox", &m_globalSettings.useSkyboxIrradiance);
     gui::draw_light_widget(m_light.light);
     gui::draw_transform_widget(m_light.light);
 
@@ -849,20 +871,4 @@ void HairRenderer::setup_window_callbacks()
                              { static_cast<HairRenderer *>(glfwGetWindowUserPointer(w))->mouse_callback(w, x, y); });
     glfwSetFramebufferSizeCallback(m_window.ptr, [](GLFWwindow *w, int width, int height)
                                    { static_cast<HairRenderer *>(glfwGetWindowUserPointer(w))->resize_callback(w, width, height); });
-}
-
-void HairRenderer::resize_callback(GLFWwindow *w, int width, int height)
-{
-    m_camera->set_projection(width, height);
-    resize({width, height});
-    m_forwardFBO->resize({width, height});
-    m_depthFBO->resize({width, height});
-
-#ifdef SMAA
-    m_smaaRes.blendFBO->resize({width, height});
-    m_smaaRes.edgeFBO->resize({width, height});
-#ifdef SMAAx2
-    m_smaaRes.separateFBO->resize({width, height});
-#endif
-#endif
 }

@@ -28,6 +28,7 @@ struct Vertex
     }
 };
 
+
 struct Geometry
 {
     size_t triangles;
@@ -35,7 +36,6 @@ struct Geometry
     std::vector<unsigned int> indices;
     bool indexed;
 };
-
 #pragma region BV
 
 /*
@@ -62,7 +62,6 @@ struct AABB : public Volume
 };
 
 #pragma endregion
-#pragma region MESH
 
 class Mesh : public Object3D
 {
@@ -84,8 +83,7 @@ public:
     Mesh(Geometry &geometry, Material *const material) : Object3D("Mesh", {0.0f, 0.0f, 0.0f}, Object3DType::MESH), m_material(material), m_geometry(geometry) { Mesh::INSTANCED_MESHES++; }
     ~Mesh()
     {
-        Mesh::INSTANCED_MESHES--;
-        cleanup();
+        GL_CHECK(glDeleteVertexArrays(1, &m_vao));
         delete m_material;
     }
 
@@ -106,11 +104,6 @@ public:
 
     inline static int get_number_of_instances() { return INSTANCED_MESHES; }
 
-    inline void cleanup()
-    {
-        GL_CHECK(glDeleteVertexArrays(1, &m_vao));
-    }
-
     inline void setup_bounding_volume()
     {
         if (!m_bv)
@@ -127,10 +120,7 @@ public:
     static Mesh *create_screen_quad();
 
     static Mesh *create_cube();
-    static Mesh *create_strand();
 };
-
-#pragma endregion
 
 GLIB_NAMESPACE_END
 

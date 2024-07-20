@@ -28,5 +28,5 @@ out vec2 fragColor;
 
 void main() {
 
-    fragColor = u_isHair ? vec2(0.0,gl_FragCoord.z) : vec2(gl_FragCoord.z,0.0);
+  //  fragColor = u_isHair ? vec2(0.0,gl_FragCoord.z) : vec2(gl_FragCoord.z,0.0);
 }

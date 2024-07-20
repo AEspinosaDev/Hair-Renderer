@@ -1,48 +1,59 @@
 cmake_minimum_required(VERSION 3.0.0)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+
 project(Hair_Renderer VERSION 0.0.1)
 
 find_package(OpenGL REQUIRED)
-find_package(glfw3 REQUIRED)
-find_package(GLEW REQUIRED)
-find_package(glm REQUIRED)
 
-file(GLOB ENGINE_SOURCES
+#Set up dependencies
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(deps/glfw-3.4)
+add_subdirectory(deps/glad)
+add_subdirectory(deps/glm-1.0.1)
+add_subdirectory(deps/imgui) 
+add_subdirectory(deps/stb_image)
+add_subdirectory(deps/tiny_obj_loader)	
+add_subdirectory(deps/tinyply)	
+
+
+file(GLOB SOURCES
+"src/*.cpp"
+"src/*.h"
 "src/engine/*.cpp"
 "src/engine/*.h"
 "deps/imgui/*.cpp"
 "deps/imgui/*.h"
 )
 
-add_library(Engine ${ENGINE_SOURCES})
-target_link_libraries(Engine libglfw3.a GLEW::GLEW ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} -lGL )
-target_include_directories(Engine PUBLIC ${CMAKE_SOURCE_DIR}/deps ${CMAKE_SOURCE_DIR}/deps/imgui)
-
-file(GLOB APP_SOURCES
-"src/*.cpp"
-"src/*.h"
-)
-
-add_executable(HairViewer ${APP_SOURCES})
-target_link_libraries(HairViewer PRIVATE Engine)
+add_executable(HairViewer ${SOURCES})
 
 
-add_executable(LUTGenerator 
-"src/marschner/main.cpp" 
-"src/marschner/generator.hpp")
-# target_link_libraries(LUTGenerator PRIVATE Engine)
-target_include_directories(LUTGenerator PUBLIC ${CMAKE_SOURCE_DIR}/deps)
+#Link libraries
+target_link_libraries(HairViewer PUBLIC glm glfw glad stb_image imgui tiny_obj_loader tinyply)
+#Set dependencies inside folder
+set_property(TARGET glfw glad glm imgui stb_image tiny_obj_loader tinyply PROPERTY FOLDER "deps")
+
 
 
 set_target_properties(HairViewer PROPERTIES
 RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin/debug
 )
+
+add_executable(LUTGenerator 
+"src/marschner/main.cpp" 
+"src/marschner/generator.hpp")
+target_link_libraries(LUTGenerator PUBLIC stb_image)
+
 set_target_properties(LUTGenerator PROPERTIES
 RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
 RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/bin/debug
 )
 
-target_compile_definitions(LUTGenerator PUBLIC SHADERS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders/")
-
-
+target_compile_definitions(HairViewer PUBLIC RES_PATH="${CMAKE_CURRENT_SOURCE_DIR}/resources/")

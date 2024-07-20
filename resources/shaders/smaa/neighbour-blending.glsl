@@ -815,7 +815,7 @@ void main() {
                                   , SMAATexture2D(velocityTex)
                                   #endif
                                   ); 
-    outColor = mix(color0,color1,0.5);                              
+    outColor = mix(color0,color1,0.0);                              
 #else
     outColor = SMAANeighborhoodBlendingPS(v_uv,
                                   v_offset,

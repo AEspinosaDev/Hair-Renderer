@@ -29,7 +29,7 @@ enum ShaderType
 
 /*
 Struct that contains all graphic pipeline stages sources for compiling a shader.
-Compute source is not included due to the fact that it is a stage independent to the graphic pipeline
+Compute source is not included due to the fact that it is a stage independent to the graphic pipeline 
 (Check ComputeShader class).
 */
 struct ShaderStageSource
@@ -58,7 +58,7 @@ protected:
 
     virtual unsigned int create_program(ShaderStageSource source);
 
-    Shader(ShaderType t) : m_type(t) {} // Utility constructor for inheritance
+    Shader(ShaderType t): m_type(t){} //Utility constructor for inheritance
 
 public:
     /*
@@ -68,13 +68,11 @@ public:
 
     Shader(ShaderStageSource src, ShaderType t);
 
-    ~Shader() { cleanup(); }
+    ~Shader(){}
 
     void bind() const;
 
     void unbind() const;
-
-    inline void cleanup() { GL_CHECK(glDeleteProgram(m_ID)); }
 
     inline ShaderType get_type() { return m_type; }
 
@@ -119,6 +117,7 @@ GPGPU dedicated shader. This functionality is not related to the graphic pipelin
 class ComputeShader : public Shader
 {
 private:
+
     unsigned int compile(unsigned int type, const char *source);
 
     unsigned int create_program(const std::string &src);
@@ -129,9 +128,9 @@ public:
     /*
     Launch the shader kernel in the GPU
     */
-    void dispatch(Extent3D workGroupExtent, bool autoBarrier = true, unsigned int barrierType = GL_ALL_BARRIER_BITS) const;
+    void dispatch(Extent3D workGroupExtent, bool autoBarrier = true, unsigned int barrierType =GL_ALL_BARRIER_BITS) const;
 
-    static void set_barrier(unsigned int barrierType = GL_ALL_BARRIER_BITS);
+    static void set_barrier(unsigned int barrierType = GL_ALL_BARRIER_BITS );
 
     /*
     GPU limitation query functions
@@ -139,6 +138,7 @@ public:
     static Extent3D query_max_workgroup_extent();
     static Extent3D query_max_workgroup_number();
     static int query_max_invocations();
+    
 };
 
 #pragma endregion

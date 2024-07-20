@@ -8,8 +8,6 @@ void Framebuffer::generate()
     GL_CHECK(glGenFramebuffers(1, &m_id));
     GL_CHECK(glBindFramebuffer(GL_FRAMEBUFFER, m_id));
 
-    std::vector<unsigned int> drawBuffers;
-
     for (Attachment &attachment : m_attachments)
     {
         if (!attachment.isRenderbuffer) // If its texture attachment...
@@ -87,13 +85,7 @@ void Framebuffer::generate()
 
             renderbuffer->unbind();
         }
-
-        if (attachment.attachmentType != GL_DEPTH_STENCIL_ATTACHMENT &&
-            attachment.attachmentType != GL_DEPTH_ATTACHMENT &&
-            attachment.attachmentType != GL_STENCIL_ATTACHMENT)
-            drawBuffers.push_back(attachment.attachmentType);
     }
-    GL_CHECK(glDrawBuffers(drawBuffers.size(), drawBuffers.data()));
 
     if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         ERR_LOG("ERROR::FRAMEBUFFER::" << m_id << ":: Framebuffer is not complete!");
@@ -205,8 +197,7 @@ void Framebuffer::enable_depth_writes(bool op)
     GL_CHECK(glDepthMask(op));
 }
 
-void Framebuffer::enable_rasterizer(bool op)
-{
+void Framebuffer::enable_rasterizer(bool op){
     !op ? glEnable(GL_RASTERIZER_DISCARD) : glDisable(GL_RASTERIZER_DISCARD);
 }
 

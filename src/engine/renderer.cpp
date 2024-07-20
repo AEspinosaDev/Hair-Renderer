@@ -21,7 +21,6 @@ void Renderer::create_context()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, m_context.OpenGLMajor);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, m_context.OpenGLMinor);
     glfwWindowHint(GLFW_OPENGL_PROFILE, m_context.OpenGLProfile);
-    
 
     m_window.ptr = glfwCreateWindow(m_window.extent.width, m_window.extent.height, m_window.title, NULL, NULL);
     if (!m_window.ptr)
@@ -32,9 +31,11 @@ void Renderer::create_context()
     }
 
     glfwMakeContextCurrent(m_window.ptr);
-    if (glewInit() != GLEW_OK)
+
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        fprintf(stderr, "Failed to initialize GLEW\n");
+        glfwDestroyWindow(m_window.ptr);
+        glfwTerminate();
     }
 
     glfwSwapInterval(m_settings.vSync);

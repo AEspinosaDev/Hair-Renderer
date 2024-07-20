@@ -15,16 +15,20 @@ struct UserInterfaceSettings
 struct HairSettings
 {
     float thickness = 0.002f;
-#ifdef MARSCHNER
-    glm::vec3 baseColor = glm::vec3(
-        68.0f / 255.0f,
-        37.0f / 255.0f,
-        10.0f / 255.0f);
     float Rpower = 5.0f;
-    float TTpower = 1.0f;
     float TRTpower = 15.0f;
-    float roughness = 0.4f;
-    float shift = 0.12f; // In radians (-5º to -10º) => 0.088 to 0.17 //Not with epic 0.02 does fine
+#ifdef MARSCHNER
+    // glm::vec3 baseColor = glm::vec3(
+    //     68.0f / 255.0f,
+    //     37.0f / 255.0f,
+    //     10.0f / 255.0f);
+    glm::vec3 baseColor = glm::vec3(
+        20.0f / 255.0f,
+        10.0f / 255.0f,
+        2.0f / 255.0f);
+    float TTpower = 1.0f;
+    float roughness = 10.0f;
+    float shift = 2.0f; // Deg
     float ior = 1.55f;
 
     bool r = true;
@@ -32,10 +36,10 @@ struct HairSettings
     bool trt = true;
 
     bool scatter = true;
-    bool colorScatter = true;
+    bool colorScatter = false;
     float scatterExp = 500.0f;
 
-    bool glints = false;
+    bool glints = true;
 
     bool occlusion = false;
 #else
@@ -46,22 +50,24 @@ struct HairSettings
     float specPower1 = 210.0f;
     float specPower2 = 8.0f;
 #endif
-
-    // float cosTheta
 };
 struct HeadSettings
 {
+    // glm::vec3 skinColor = glm::vec3(
+    //     240.0f / 255.0f,
+    //     184.0f / 255.0f,
+    //     160.0f / 255.0f);
     glm::vec3 skinColor = glm::vec3(
-        240.0f / 255.0f,
-        184.0f / 255.0f,
-        160.0f / 255.0f);
+        140.0f / 255.0f,
+        140.0f / 255.0f,
+        140.0f / 255.0f);
     bool useAlbedoTexture = false;
 };
 struct GlobalSettings
 {
     bool showUI{true};
     glm::vec3 ambientColor = glm::vec3(1.0f);
-    float ambientStrength = 0.25f;
+    float ambientStrength = 0.4f;
     float enviromentRotation = 0.0f;
     bool useSkyboxIrradiance = false;
     Extent2D shadowExtent = {2048, 2048};

@@ -313,58 +313,6 @@ namespace LUTGen
 
         return std::min(1.0, result);
     }
-
-
-#pragma endregion
-
-#pragma region Azimuthal Epic
-
-// //Attenuattion Monochrome
-// double Epic_AMono(double f, int p, double t){ //fresnel, Stage, Absorbtion
-//   return (1-f)*(1-f)*pow(f,p-1)*pow(t,p);
-// }
-// // double Epic_ARGB(double f, int p, Color t){ //fresnel, Stage, Absorbtion
-// //   return (1-f)*(1-f)*pow(f,p-1)*pow(t,Color(p));
-// // }
-
-// double Epic_N0(vec3 wi, vec3 wo, float cosPhi){
-//   float cosHalfPhi = sqrt(0.5+0.5*cosPhi);
-
-//   // return (0.25*cosHalfPhi)*fresnelSchlick(u_hair.ior,sqrt(0.5*(1+dot(wi,wo)))); //Frostbite
-//   return (0.25*cosHalfPhi)*fresnelSchlick(u_hair.ior,sqrt(0.5+0.5*dot(wi,wo))) ; //Epic
-// }
-// double Epic_N1Mono(float sinThetaD, float cosThetaD, float cosPhi){
-
-//   // float _ior = sqrt(u_hair.ior*u_hair.ior - sinThetaD* sinThetaD)/ cosThetaD; //Original
-//   float _ior =  1.19 / cosThetaD + 0.36 * cosThetaD; //Fit EPIC
-//   float a = 1/_ior;
-
-//   float cosHalfPhi = sqrt(0.5+0.5*cosPhi); 
-//   float h = 1 + a *(0.6-0.8*cosPhi) *  cosHalfPhi; //Fit EPIC
-
-//   float power = sqrt(1-h*h*a*a)/(2*cosThetaD);
-
-//   float D = exp(-3.65*cosPhi-3.98); //Intensity distribution
-//   vec3 T = pow(u_hair.baseColor,vec3(power)); //Absortion
-//   float F = fresnelSchlick(u_hair.ior,cosThetaD*sqrt(1-h*h)); //Fresnel
-
-//   return A(F,1,T)*D;
-// }
-// // Azimuthal DOUBLE REFLECTION
-// vec3 Epic_N2Mono(float sinThetaD, float cosThetaD, float cosPhi){
-//   float h = sqrt(3.0)*0.5; //Por que si
-// //   float _ior = sqrt(u_hair.ior*u_hair.ior - sinThetaD* sinThetaD)/ cosThetaD; //Original
-// // float gamma = asin(h/_ior);
-// //    vec3 T = exp(-2*u_hair.baseColor*(1+cos(2*gamma)));
-//   //  float scale = clamp(1.5*(1-2.0*u_hair.roughness),0.0,1.0); //Frostbite scale term
-
-//   float D = exp(17.0*cosPhi-16.78); //Intensity distribution
-//    vec3 T = pow(u_hair.baseColor,vec3(0.8/cosThetaD));
-//   float F = fresnelSchlick(u_hair.ior,acos(cosThetaD*sqrt(1-h*h))); //Fresnel CONSTANT ?
-  
-//   return A(F,2,T)*D;
-// }
-
 #pragma endregion
 
 }

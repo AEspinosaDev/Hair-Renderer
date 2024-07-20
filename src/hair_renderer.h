@@ -2,7 +2,7 @@
 #define __HAIR_RENDERER__
 
 #include <filesystem>
-#include <unistd.h>
+// #include <unistd.h>
 #include <thread>
 
 #include "engine/shader.h"
@@ -33,8 +33,8 @@ private:
     Mesh *m_hair;
     Mesh *m_head;
     Mesh *m_floor;
-    Mesh* m_vignette;
-    Mesh* m_skybox;
+    Mesh *m_vignette;
+    Mesh *m_skybox;
 
     struct LightData
     {
@@ -73,7 +73,7 @@ private:
         glm::vec4 lightPos;
         glm::vec4 lightColor;
         glm::vec4 shadowConfig;
-        glm::mat4 lightViewProj; 
+        glm::mat4 lightViewProj;
         glm::vec4 frustrumData;
     };
 
@@ -89,25 +89,26 @@ private:
     GraphicPipeline m_depthPipeline{};
     GraphicPipeline m_strandDepthPipeline{};
 
-    Framebuffer* m_noiseFBO;
-    Framebuffer* m_forwardFBO;
+    Framebuffer *m_noiseFBO;
+    Framebuffer *m_forwardFBO;
     Framebuffer *m_shadowFBO;
     Framebuffer *m_fxaaFBO;
     Framebuffer *m_depthFBO;
 
-    struct SMAAResources{
-        Framebuffer* edgeFBO{nullptr};
-        Framebuffer* blendFBO{nullptr};
-        Framebuffer* separateFBO{nullptr};
-        Texture* areaTex{nullptr};
-        Texture* searchTex{nullptr};
+    struct SMAAResources
+    {
+        Framebuffer *edgeFBO{nullptr};
+        Framebuffer *blendFBO{nullptr};
+        Framebuffer *separateFBO{nullptr};
+        Texture *areaTex{nullptr};
+        Texture *searchTex{nullptr};
         GraphicPipeline edgePipeline{};
         GraphicPipeline blendPipeline{};
         GraphicPipeline resolvePipeline{};
         GraphicPipeline separatePipeline{};
     };
 
-    SMAAResources m_smaaRes{}; 
+    SMAAResources m_smaaRes{};
 
     //--- Settings ---
 
@@ -126,7 +127,6 @@ private:
 
     void setup_window_callbacks();
 
-
     void forward_pass();
 
     void depth_prepass();
@@ -135,9 +135,9 @@ private:
 
     void postprocess_pass();
 
-    void smaa_pass();
-
     void noise_pass();
+
+    void smaa_pass();
 
 #pragma region INPUT
     void key_callback(GLFWwindow *w, int a, int b, int c, int d)
@@ -166,15 +166,19 @@ private:
         if (!user_interface_wants_to_handle_input())
             m_controller->handle_mouse(w, x, y);
     }
-    void resize_callback(GLFWwindow *w, int width, int height);
-    
+    void resize_callback(GLFWwindow *w, int width, int height)
+    {
+        m_camera->set_projection(width, height);
+        resize({width, height});
+        m_forwardFBO->resize({width, height});
+        m_depthFBO->resize({width, height});
+    }
 
 #pragma endregion
 
 public:
     HairRenderer(const char *title) : Renderer(title) {}
     HairRenderer(Window window) : Renderer(window) {}
-
 };
 
 #endif

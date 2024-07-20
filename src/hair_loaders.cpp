@@ -202,7 +202,7 @@ void hair_loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh
 
             // NUMBER OF OPERATIONS PER TASK
             const unsigned int NUM_TRIS = indices.size() / 3;
-            const unsigned int OPERATIONS = 2000;
+            const unsigned int OPERATIONS = 20000;
             const size_t NUM_TASKS = (NUM_TRIS / OPERATIONS) + 1;
 
             std::vector<std::thread> tasks;
@@ -401,7 +401,7 @@ void hair_loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh
                               { return a.dist < b.dist; });
 
                     int count = 0;
-                    for (auto it = roots.begin(); it != roots.end() && count < NeighborS; ++it, ++count)
+                    for (auto it = roots.begin(); it != roots.end() && count < NEIGHBORS; ++it, ++count)
                     {
                         nearestNeighbors.push_back(*it);
                     }
@@ -410,13 +410,13 @@ void hair_loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh
                     float totalWeight = 0;
 
                     // RANDON WEIGHT PER Neighbor
-                    for (size_t nn = 0; nn < NeighborS; nn++)
+                    for (size_t nn = 0; nn < NEIGHBORS; nn++)
                     {
                         nearestNeighbors[nn].weight = 1 / (nearestNeighbors[nn].dist * nearestNeighbors[nn].dist);
                         totalWeight += nearestNeighbors[nn].weight;
                     }
                     // // NORMALIZE WEIGHTS
-                    for (size_t nn = 0; nn < NeighborS; nn++)
+                    for (size_t nn = 0; nn < NEIGHBORS; nn++)
                     {
                         nearestNeighbors[nn].weight = nearestNeighbors[nn].weight / totalWeight;
                     }
@@ -473,7 +473,7 @@ void hair_loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh
         Geometry g;
         g.vertices = vertices;
         g.indices = indices;
-        augmentDensity(g, 40000);
+         augmentDensity(g, 40000);
         mesh->set_geometry(g);
 
         return;
@@ -494,7 +494,7 @@ void hair_loaders::load_cy_hair(Mesh *const mesh, const char *fileName)
 #define HAIR_FILE_COLORS_BIT 16
 #define HAIR_FILE_INFO_SIZE 88
 
-    unsigned short *segments;
+    unsigned short *segments{nullptr};
     float *points;
     float *dirs;
     float *thickness;
@@ -744,5 +744,4 @@ void hair_loaders::load_cy_hair(Mesh *const mesh, const char *fileName)
     g.vertices = vertices;
     g.indices = indices;
     mesh->set_geometry(g);
-    mesh->setup_bounding_volume();
 }

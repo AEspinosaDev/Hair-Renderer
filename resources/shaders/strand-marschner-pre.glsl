@@ -70,16 +70,13 @@ void emitQuadPoint(vec4 origin,
   
         vec4 newPos = origin + right * offset; //Model space
         gl_Position =  u_camera.viewProj * newPos;
-        // g_dir = normalize(mat3(transpose(inverse(u_camera.view))) * v_tangent[id]);
-        g_dir = v_tangent[id];
+        g_dir = normalize(mat3(transpose(inverse(u_camera.view))) * v_tangent[id]);
         g_modelDir = v_tangent[id];
         g_color = v_color[id];
-        // g_pos = (u_camera.view *  newPos).xyz;
-        g_pos = (newPos).xyz;
+        g_pos = (u_camera.view *  newPos).xyz;
         g_modelPos = newPos.xyz;
         g_uv = uv;
-        // g_normal =  normalize(mat3(transpose(inverse(u_camera.view))) * normal);
-        g_normal =  normal;
+        g_normal =  normalize(mat3(transpose(inverse(u_camera.view))) * normal);
         g_modelNormal = normal;
         g_origin = (u_camera.view * origin).xyz; 
         g_id = v_id[0];
@@ -223,10 +220,8 @@ vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bo
 
   //--->>>View space
   vec3 wi = normalize(u_scene.lightPos.xyz- g_pos);    //Light vector
-  // vec3 wi = normalize(g_pos - u_scene.lightPos.xyz);    //Light vector
   vec3 n  = g_normal;                                  //Strand shading normal
-  // vec3 v  = normalize(inverse(u_camera.modelView)[3].xyz-g_pos);                         //Camera vector
-  vec3 v  = normalize(u_camera.position-g_pos);                         //Camera vector
+  vec3 v  = normalize(-g_pos);                         //Camera vector
   vec3 u  = normalize(g_dir);                          //Strand tangent/direction
 
   if(u_hair.glints){
@@ -237,9 +232,9 @@ vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bo
   //Theta & Phi
   float sin_thI = dot(u,wi);
   float sin_thR  = dot(u,v);
-  vec3 wiPerp    = normalize(wi - sin_thI * u);
-  vec3 vPerp     = normalize(v - sin_thR * u);
-  float cos_phiD = dot(vPerp,wiPerp)*inversesqrt(dot(vPerp,vPerp)*dot(wiPerp,wiPerp));
+  vec3 wiPerp    = wi - sin_thI * u;
+  vec3 vPerp     = v - sin_thR * u;
+  float cos_phiD = dot(vPerp,wiPerp)*inversesqrt(dot(wiPerp,wiPerp)*dot(vPerp,vPerp));
   float cos_thD    = cos((asin(sin_thI)-asin(sin_thR))/2.0);
 
   //LUTs
@@ -249,19 +244,21 @@ vec3 computeLighting(float beta, float shift, vec3 radiance, bool r, bool tt, bo
   vec4 mM  = texture(u_m,uvM).rgba; 
   // float cos_thD = mM.a; 
   //Marschner N
+  // vec2 uvN = vec2(0.5*cosPhiD+0.5,1.0-cosThetaD);
   vec2 uvN = vec2(cos_phiD,cos_thD)*0.5+0.5;
-  uvN.y = 1-uvN.y;
+   uvN.y = 1-uvN.y;
   vec4 mN  = texture(u_n,uvN).rgba;
 
   float R   = r ?   mM.r * mN.r : 0.0; 
   float TT  = tt ?  mM.g * mN.g : 0.0; 
-  float TRT = trt ? mM.b * mN.b : 0.0; 
+  float TRT = trt ? mM.b * mN.b: 0.0; 
 
+  vec3 absColor = u_hair.baseColor;
 
-  vec3 specular = vec3((R+TT+TRT)/max(0.2,cos_thD*cos_thD));
+  vec3 specular = vec3(R+TT+TRT)/max(0.2,cos_thD*cos_thD);
   specular*= radiance;
 
-  // vec3 diffuse  = u_hair.baseColor;
+  vec3 diffuse  = u_hair.baseColor;
 
   // return (specular+diffuse) * radiance;
   return specular;
@@ -313,6 +310,7 @@ float computeShadow(){
     return filterPCF(int(u_scene.pcfKernelSize), projCoords,bias);
 
 }
+
 float getLuminance(vec3 li){
   return 0.2126*li.r + 0.7152*li.g+0.0722*li.b;
 }

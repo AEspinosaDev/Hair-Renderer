@@ -46,7 +46,7 @@ public:
     {
         if (m_isDirty)
         {
-            m_view = glm::lookAt(m_transform.position, m_transform.position + m_transform.forward, m_transform.up);
+            m_view = glm::lookAt(m_transform.position,  m_transform.forward, m_transform.up);
             m_isDirty = false;
         }
         return m_view;
