@@ -1,6 +1,6 @@
 #include "hair_loaders.h"
 
-void hair_loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *const skullMesh, bool preload, bool verbose, bool calculateTangents)
+void hair_loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh *const skullMesh, bool preload, bool verbose, bool calculateTangents, bool saveOutput)
 {
 
     std::unique_ptr<std::istream> file_stream;
@@ -473,8 +473,41 @@ void hair_loaders::load_neural_hair(Mesh *const mesh, const char *fileName, Mesh
         Geometry g;
         g.vertices = vertices;
         g.indices = indices;
-        augmentDensity(g, 40000);
+        augmentDensity(g, 80000);
         mesh->set_geometry(g);
+
+        auto saveAsFile = [&](Geometry &g)
+        {
+            pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZRGB>());
+            const size_t SIZE = g.vertices.size();
+
+            cloud->points.reserve(SIZE);
+            // Add points to the cloud
+            for (size_t i = 0; i < SIZE; i++)
+            {
+                pcl::PointXYZRGB point;
+                point.x = g.vertices[i].position.x;
+                point.y = g.vertices[i].position.y;
+                point.z = g.vertices[i].position.z;
+
+                point.r = g.vertices[i].color.r * 255.0f;
+                point.g = g.vertices[i].color.g * 255.0f;
+                point.b = g.vertices[i].color.b * 255.0f;
+
+                cloud->points.push_back(point);
+            }
+
+            // Create a PLY writer object
+            pcl::PLYWriter writer;
+
+            // Save the cloud to a .ply file in ASCII format
+            writer.write("denseHair.ply", *cloud, true); // false = ASCII format
+        };
+
+        if (saveOutput)
+        {
+            saveAsFile(g);
+        }
 
         return;
     }

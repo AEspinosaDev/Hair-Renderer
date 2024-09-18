@@ -2,13 +2,13 @@
 
 //----------------------------------------------
 // Hair model type
-#define YUKSEL
+// #define YUKSEL
 
 //----------------------------------------------
 // Antialiasing implementation defines
 // #define FXAA
-#define SMAA
-#define SMAAx2
+// #define SMAA
+// #define SMAAx2
 
 //----------------------------------------------
 // Shading algorithms setup
@@ -25,7 +25,7 @@ void HairRenderer::init()
 #pragma region INIT
     Renderer::init();
 
-    chdir("/home/tony/Dev/Hair-Renderer/");
+    chdir("/home/antonio/Downloads/Hair-Renderer/");
 
     m_camera = new Camera(m_window.extent.width, m_window.extent.height, {0.0f, 0.0f, -10.0f});
 
@@ -428,7 +428,7 @@ void HairRenderer::init()
     // NEURAL HAIRCUT MODELS
     {
         loaders::load_PLY(m_head, "resources/models/head_blender.ply", true, true, false);
-        std::thread loadThread1(hair_loaders::load_neural_hair, m_hair, "resources/models/2000000.ply", m_head, true, true, false);
+        std::thread loadThread1(hair_loaders::load_neural_hair, m_hair, "resources/models/2000000.ply", m_head, true, true, false, true);
         loadThread1.detach();
         m_head->set_scale(3.0);
         m_hair->set_scale(3.0);

@@ -6,6 +6,7 @@ find_package(OpenGL REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(GLEW REQUIRED)
 find_package(glm REQUIRED)
+find_package(PCL REQUIRED)
 
 file(GLOB ENGINE_SOURCES
 "src/engine/*.cpp"
@@ -15,8 +16,9 @@ file(GLOB ENGINE_SOURCES
 )
 
 add_library(Engine ${ENGINE_SOURCES})
-target_link_libraries(Engine libglfw3.a GLEW::GLEW ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} -lGL )
-target_include_directories(Engine PUBLIC ${CMAKE_SOURCE_DIR}/deps ${CMAKE_SOURCE_DIR}/deps/imgui)
+target_link_libraries(Engine glfw GLEW::GLEW ${CMAKE_DL_LIBS} ${CMAKE_THREAD_LIBS_INIT} -lGL  ${PCL_LIBRARIES})
+target_include_directories(Engine PUBLIC ${CMAKE_SOURCE_DIR}/deps ${CMAKE_SOURCE_DIR}/deps/imgui ${PCL_INCLUDE_DIRS})
+add_definitions(${PCL_DEFINITIONS})
 
 file(GLOB APP_SOURCES
 "src/*.cpp"
